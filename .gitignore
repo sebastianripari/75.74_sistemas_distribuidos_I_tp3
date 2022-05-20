@@ -1,3 +1,4 @@
 bin/
 server/target
 client/target
+posts_full.csv

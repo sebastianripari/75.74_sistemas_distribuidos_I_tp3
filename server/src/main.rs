@@ -42,6 +42,7 @@ fn main() {
                         }
 
                         let post = Post::deserialize(msg);
+                        println!("post received: {:?}", post);
                     }
                 }
             }

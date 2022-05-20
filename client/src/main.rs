@@ -1,6 +1,6 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}};
 
-use crate::utils::{socket::{SocketReader, SocketWriter}, file::read_file_posts};
+use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file}};
 
 const PORT: u16 = 12345;
 
@@ -10,7 +10,6 @@ mod entities;
 fn main() {
     println!("client up");
 
-    let posts;
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(172, 25, 125, 2)), PORT);
 
     let mut reader;
@@ -29,12 +28,5 @@ fn main() {
         }
     }
 
-    posts = read_file_posts("posts.csv".to_string());
-    println!("posts: {:?}", posts);
-
-    for post in posts {
-        writter.send(post.serialize());
-    }
-
-    writter.send("end_of_posts\n".to_string());
+    send_posts_from_file("posts_full.csv".to_string(), &mut writter);
 }

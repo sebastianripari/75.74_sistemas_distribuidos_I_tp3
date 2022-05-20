@@ -13,6 +13,7 @@ services:
     entrypoint: /target/release/client
     volumes:
       - ./posts.csv:/posts.csv
+      - ./posts_full.csv:/posts_full.csv
     networks:
       - testing_net
     depends_on:

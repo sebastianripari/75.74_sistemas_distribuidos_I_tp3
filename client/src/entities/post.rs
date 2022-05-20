@@ -17,6 +17,10 @@ impl Post {
     pub fn from_file(s: String) -> Result<Post, String> {
         let parts: Vec<&str> = s.split(',').collect();
 
+        if parts.len() != 12 {
+            return Err("bad row".to_string())
+        }
+
         Ok(Post{
             id: parts[1].to_string(),
             subreddit_id: parts[2].to_string(),
