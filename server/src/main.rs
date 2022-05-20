@@ -1,8 +1,9 @@
 use std::net::TcpListener;
 
-use crate::utils::socket::{SocketReader, SocketWriter};
+use crate::{utils::socket::{SocketReader, SocketWriter}, entities::post::Post};
 
 mod utils;
+mod entities;
 
 const PORT: u16 = 12345;
 
@@ -33,9 +34,16 @@ fn main() {
                     SocketWriter::new(stream_clone)
                 );
 
-                let m = socket_reader.receive().unwrap();
-                println!("recibi: {}", m);
-                socket_writter.send("todo ok\n".to_string());
+                loop {
+                    if let Some(msg) = socket_reader.receive() {
+
+                        if msg == "end_of_posts\n".to_string() {
+                            break;
+                        }
+
+                        let post = Post::deserialize(msg);
+                    }
+                }
             }
             Err(_) => {
             }

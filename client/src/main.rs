@@ -1,14 +1,16 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}};
 
-use crate::utils::socket::{SocketReader, SocketWriter};
+use crate::utils::{socket::{SocketReader, SocketWriter}, file::read_file_posts};
 
 const PORT: u16 = 12345;
 
 mod utils;
+mod entities;
 
 fn main() {
     println!("client up");
 
+    let posts;
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(172, 25, 125, 2)), PORT);
 
     let mut reader;
@@ -16,18 +18,23 @@ fn main() {
 
     match TcpStream::connect(&address) {
         Ok(stream) => {
-            println!("[alglobo] conectado con servicio hotel");
+            println!("connected with the server");
             let stream_clone = stream.try_clone().unwrap();
             reader = SocketReader::new(stream);
             writter = SocketWriter::new(stream_clone);
         }
         Err(err) => {
-            println!("[alglobo] no se pudo conectar con el servicio hotel. Error: {:?}", err);
+            println!("could not connect {:?}", err);
             panic!()
         }
     }
 
-    writter.send("hi\n".to_string());
-    let response = reader.receive();
-    println!("response: {}", response.unwrap());
+    posts = read_file_posts("posts.csv".to_string());
+    println!("posts: {:?}", posts);
+
+    for post in posts {
+        writter.send(post.serialize());
+    }
+
+    writter.send("end_of_posts\n".to_string());
 }
