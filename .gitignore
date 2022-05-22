@@ -1,4 +1,5 @@
 bin/
 server/target
 client/target
+worker_avg/target
 posts_full.csv

@@ -1,22 +1,66 @@
-use std::net::TcpListener;
+use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env};
+
+use amiquip::{Connection, Exchange, Publish};
 
 use crate::{utils::socket::{SocketReader, SocketWriter}, entities::post::Post};
 
 mod utils;
 mod entities;
 
-const PORT: u16 = 12345;
+const PORT_DEFAULT: &str = "12345";
+const ROUTING_KEY: &str = "hello";
+
+fn cleaner_handler(
+    receiver_signal: Receiver<()>,
+    running_lock: Arc<RwLock<bool>>
+) {
+    receiver_signal.recv().unwrap();
+    if let Ok(mut running) = running_lock.write() {
+        *running = false; 
+    }
+}
 
 fn main() {
     println!("server start");
 
+    let mut port = PORT_DEFAULT.to_string();
+    let cleaner;
+    let (sender_signal, receiver_signal) = channel();
+    let running_lock = Arc::new(RwLock::new(true));
+
+    let mut running_lock_clone = running_lock.clone();
+
+    if let Ok(p) = env::var("SERVER_PORT") {
+        port = p;
+    }
+
+    ctrlc::set_handler(move || sender_signal.send(()).unwrap()).unwrap();
+    cleaner = thread::spawn(move || cleaner_handler(receiver_signal, running_lock_clone));
+
+    thread::sleep(Duration::from_secs(20));
+    let mut rabbitmq_connection;
+    match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
+        Ok(connection) => {
+            println!("connected with rabbitmq");
+            rabbitmq_connection = connection;
+        }
+        Err(_) => {
+            panic!("could not connect with rabbitmq")
+        }
+    }
+    let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let exchange = Exchange::direct(&channel);
+
     let listener;
-    match TcpListener::bind(format!("172.25.125.2:{}", PORT)) {
+
+    
+    println!("binding on {}", format!("172.25.125.2:{}", port));
+    match TcpListener::bind(format!("172.25.125.2:{}", port)) {
         Ok(tcp_listener) => {
-            println!("server listening on port {}", PORT);
+            println!("server listening on port {}", port);
             listener = tcp_listener
         }
-        Err(_) => panic!("could not start socket aceptor"),
+        Err(err) => panic!("could not start socket aceptor: {}", err),
     }
     if let Err(_) = listener.set_nonblocking(true) {
         panic!("could not set listener as non blocking")
@@ -29,26 +73,48 @@ fn main() {
 
                 let stream_clone = stream.try_clone().unwrap();
 
-                let (mut socket_reader, mut socket_writter) = (
+                let (mut socket_reader, mut socket_writer) = (
                     SocketReader::new(stream),
                     SocketWriter::new(stream_clone)
                 );
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-
                         if msg == "end_of_posts\n".to_string() {
                             break;
                         }
-
+            
                         let post = Post::deserialize(msg);
-                        println!("post received: {:?}", post);
+
+                        println!("{} received", post.id);
+            
+                        exchange.publish(Publish::new(
+                            post.score.as_bytes(),
+                            ROUTING_KEY
+                        )).unwrap();
                     }
                 }
             }
             Err(_) => {
+                running_lock_clone = running_lock.clone();
+                if let Ok(running) = running_lock_clone.read() {
+                    if *running {
+                        continue
+                    } else {
+                        break
+                    }
+                }
+                thread::sleep(Duration::from_secs(5));
             }
         }
+    }
+
+    if let Ok(_) = cleaner.join() {
+        println!("cleaner stop")
+    }
+
+    if let Ok(_) = rabbitmq_connection.close() {
+        println!("rabbitmq connection closed")
     }
 
     println!("server shutdown");

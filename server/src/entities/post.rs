@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub struct Post {
-    id: String,
+    pub id: String,
     subreddit_id: String,
     subreddit_name: String,
     subreddit_nsfw: String,
@@ -10,7 +10,7 @@ pub struct Post {
     url: String,
     selftext: String,
     title: String,
-    score: String
+    pub score: String
 }
 
 impl Post {

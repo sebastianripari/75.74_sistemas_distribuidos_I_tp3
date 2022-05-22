@@ -1,26 +1,49 @@
 version: '3'
 services:
+
   server:
     container_name: server
     image: server:latest
+    environment:
+      - SERVER_PORT=12346
     entrypoint: /target/release/server
     networks:
-      - testing_net
+      - tp2_net
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=seba1234
+    networks:
+      - tp2_net
+    ports:
+     - 15672:15672
+
+  worker_avg:
+    container_name: worker_avg
+    image: worker_avg:latest
+    entrypoint: /target/release/worker_avg
+    networks:
+      - tp2_net
 
   client:
     container_name: client
     image: client:latest
+    environment:
+      - SERVER_PORT=12346
     entrypoint: /target/release/client
     volumes:
       - ./posts.csv:/posts.csv
       - ./posts_full.csv:/posts_full.csv
     networks:
-      - testing_net
+      - tp2_net
     depends_on:
       - server
 
 networks:
-  testing_net:
+  tp2_net:
     ipam:
       driver: default
       config:
