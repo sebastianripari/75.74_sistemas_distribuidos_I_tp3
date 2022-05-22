@@ -5,7 +5,7 @@ services:
     container_name: server
     image: server:latest
     environment:
-      - SERVER_PORT=12346
+      - SERVER_PORT=12348
     entrypoint: /target/release/server
     networks:
       - tp2_net
@@ -32,7 +32,7 @@ services:
     container_name: client
     image: client:latest
     environment:
-      - SERVER_PORT=12346
+      - SERVER_PORT=12348
     entrypoint: /target/release/client
     volumes:
       - ./posts.csv:/posts.csv

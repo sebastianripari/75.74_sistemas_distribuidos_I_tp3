@@ -2,10 +2,13 @@ use std::{time::Duration, thread};
 
 use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
-const ROUTING_KEY: &str = "hello";
+const QUEUE_SCORE: &str = "score";
 
 fn main() {
     println!("worker avg start");
+
+    let mut count = 0;
+    let mut sum = 0;
 
     thread::sleep(Duration::from_secs(20));
 
@@ -21,14 +24,22 @@ fn main() {
     }
 
     let channel = rabbitmq_conn.open_channel(None).unwrap();
-    let queue = channel.queue_declare(ROUTING_KEY, QueueDeclareOptions::default()).unwrap();
+    let queue = channel.queue_declare(QUEUE_SCORE, QueueDeclareOptions::default()).unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     
-    for (i, message) in consumer.receiver().iter().enumerate() {
+    for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                println!("({:>3}) Received [{}]", i, body);
+                println!("{} received", body);
+                if body == "end_of_posts" {
+                    // tengo que pushear un elemento en otra cola para que le llegue
+                    // al proceso server
+                    continue;
+                } else{
+                    count = count + 1;
+                    sum = sum + body.parse::<i32>().unwrap();
+                }
                 consumer.ack(delivery).unwrap();
             }
             other => {
