@@ -1,8 +1,12 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
-
-use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file}};
+use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file}};
 
 const PORT_DEFAULT: u16 = 12345;
+
+const OPCODE_POST: u8 = 0;
+const OPCODE_POST_END: u8 = 1;
+const OPCODE_COMMENT: u8 = 2;
+const OPCODE_COMMENT_END: u8 = 3;
 
 mod utils;
 mod entities;
@@ -35,4 +39,5 @@ fn main() {
     }
 
     send_posts_from_file("posts.csv".to_string(), &mut writer);
+    send_comments_from_file("comments.csv".to_string(), &mut writer);
 }

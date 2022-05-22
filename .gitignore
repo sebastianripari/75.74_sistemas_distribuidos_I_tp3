@@ -2,4 +2,5 @@ bin/
 server/target
 client/target
 worker_avg/target
+worker_map/target
 posts_full.csv

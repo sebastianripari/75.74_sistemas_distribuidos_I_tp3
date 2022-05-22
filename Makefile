@@ -18,6 +18,7 @@ build: deps
 docker-image:
 	docker build -f ./server/Dockerfile -t "server:latest" .
 	docker build -f ./worker_avg/Dockerfile -t "worker_avg:latest" .
+	docker build -f ./worker_map/Dockerfile -t "worker_map:latest" .
 	docker build -f ./client/Dockerfile -t "client:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 

@@ -5,8 +5,23 @@ services:
     container_name: server
     image: server:latest
     environment:
-      - SERVER_PORT=12348
+      - SERVER_PORT=12350
     entrypoint: /target/release/server
+    networks:
+      - tp2_net
+
+  client:
+    container_name: client
+    image: client:latest
+    environment:
+      - SERVER_PORT=12350
+    entrypoint: /target/release/client
+    volumes:
+      - ./posts.csv:/posts.csv
+      - ./posts_full.csv:/posts_full.csv
+      - ./comments.csv:/comments.csv
+    depends_on:
+      - server
     networks:
       - tp2_net
 
@@ -16,6 +31,8 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=root
       - RABBITMQ_DEFAULT_PASS=seba1234
+    depends_on:
+      - server
     networks:
       - tp2_net
     ports:
@@ -25,22 +42,19 @@ services:
     container_name: worker_avg
     image: worker_avg:latest
     entrypoint: /target/release/worker_avg
-    networks:
-      - tp2_net
-
-  client:
-    container_name: client
-    image: client:latest
-    environment:
-      - SERVER_PORT=12348
-    entrypoint: /target/release/client
-    volumes:
-      - ./posts.csv:/posts.csv
-      - ./posts_full.csv:/posts_full.csv
-    networks:
-      - tp2_net
     depends_on:
       - server
+    networks:
+      - tp2_net
+  
+  worker_map:
+    container_name: worker_map
+    image: worker_map:latest
+    entrypoint: /target/release/worker_map
+    depends_on:
+      - server
+    networks:
+      - tp2_net
 
 networks:
   tp2_net:

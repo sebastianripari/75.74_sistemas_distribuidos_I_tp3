@@ -1,0 +1,7 @@
+type,id,subreddit.id,subreddit.name,subreddit.nsfw,created_utc,permalink,body,sentiment,score
+comment,i2x2j0g,2s5ti,meirl,false,1648771186,https://old.reddit.com/r/meirl/comments/tswh3j/meirl/i2x2j0g/,Yes,,1
+comment,i2x2hqk,2s5ti,meirl,false,1648771171,https://old.reddit.com/r/meirl/comments/tt9v20/meirl/i2x2hqk/,Its worse if youre a man,-0.4767,5
+comment,i2x2dv0,2s5ti,meirl,false,1648771121,https://old.reddit.com/r/meirl/comments/tt5aas/meirl/i2x2dv0/,They took our jerbs!!!!,0.0,3
+comment,i2x2d15,2s5ti,meirl,false,1648771110,https://old.reddit.com/r/meirl/comments/ttbnpo/meirl/i2x2d15/,It certainly can help you from a mental standpoint. Just like showering and grooming yourself.,0.765,3
+comment,i2x28i1,2s5ti,meirl,false,1648771053,https://old.reddit.com/r/meirl/comments/tswh3j/meirl/i2x28i1/,Bottom picture,0.0,1
+comment,i2x27un,2s5ti,meirl,false,1648771044,https://old.reddit.com/r/meirl/comments/tt5aas/meirl/i2x27un/,"Thats the beautiful thing about morality though, its fluid. Depending on the situation any of us can just take a second and reset the declination on our own little moral compasses to justify whatever we want to do in the moment.Ethical? Probably not. But moral? Depends on the day really.",0.6261,1

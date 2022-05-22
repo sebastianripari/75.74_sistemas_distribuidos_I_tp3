@@ -1,15 +1,22 @@
-use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env};
+use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env, process::Command};
 
-use amiquip::{Connection, Exchange, Publish, ConsumerOptions, QueueDeclareOptions};
+use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
-use crate::{utils::socket::{SocketReader, SocketWriter}, entities::post::Post};
-
+use crate::{utils::socket::{SocketReader, SocketWriter}, entities::{post::Post, comment::Comment}};
+use serde_json::json;
 mod utils;
 mod entities;
 
 const PORT_DEFAULT: &str = "12345";
 
-const QUEUE_SCORE: &str = "score";
+const QUEUE_SCORES: &str = "QUEUE_SCORES";
+const QUEUE_COMMENTS: &str = "QUEUE_COMMENTS";
+const QUEUE_SCORE_AVG: &str = "QUEUE_SCORE_AVG";
+
+const OPCODE_POST: u8 = 0;
+const OPCODE_POST_END: u8 = 1;
+const OPCODE_COMMENT: u8 = 2;
+const OPCODE_COMMENT_END: u8 = 3;
 
 fn cleaner_handler(
     receiver_signal: Receiver<()>,
@@ -23,6 +30,8 @@ fn cleaner_handler(
 
 fn main() {
     println!("server start");
+
+    println!("ifconfig: {:?}", Command::new("ifconfig").output());
 
     let mut port = PORT_DEFAULT.to_string();
     let cleaner;
@@ -54,17 +63,20 @@ fn main() {
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
-    let queue = channel.queue_declare(QUEUE_SCORE, QueueDeclareOptions::default()).unwrap();
+    let queue_score_avg = channel.queue_declare(QUEUE_SCORE_AVG, QueueDeclareOptions::default()).unwrap();
 
     let listener;
     println!("binding on {}", format!("172.25.125.2:{}", port));
     match TcpListener::bind(format!("172.25.125.2:{}", port)) {
         Ok(tcp_listener) => {
             println!("server listening on port {}", port);
-            listener = tcp_listener
+            listener = tcp_listener;
         }
-        Err(err) => panic!("could not start socket aceptor: {}", err),
+        Err(err) => {
+            panic!("could not start socket aceptor: {}", err)
+        },
     }
+    
     if let Err(_) = listener.set_nonblocking(true) {
         panic!("could not set listener as non blocking")
     }
@@ -79,29 +91,72 @@ fn main() {
                     SocketWriter::new(stream_clone)
                 );
 
-                // send score to avg_worker
+                let mut posts_done = false;
+                let mut comments_done = false;
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-                        if msg == "end_of_posts\n".to_string() {
-                            exchange.publish(Publish::new(
-                                "end_of_posts".as_bytes(),
-                                "score"
-                            )).unwrap();
+
+                        let splited: Vec<&str>  = msg.split('|').collect();
+
+                        let opcode = splited[0].parse::<u8>().unwrap();
+                        let payload = splited[1];
+
+                        match opcode {
+                            OPCODE_POST_END => {
+                                exchange.publish(Publish::new(
+                                    "end_of_posts".as_bytes(),
+                                    QUEUE_SCORES
+                                )).unwrap();
+                                posts_done = true;
+                                println!("posts done");
+                            }
+                            OPCODE_COMMENT_END => {
+                                exchange.publish(Publish::new(
+                                    "end_of_comments".as_bytes(),
+                                    QUEUE_COMMENTS
+                                )).unwrap();
+                                comments_done = true;
+                                println!("comments done");
+                            }
+                            OPCODE_POST => {
+                                let post = Post::deserialize(payload.to_string());
+                                exchange.publish(Publish::new(
+                                    post.score.as_bytes(),
+                                    QUEUE_SCORES
+                                )).unwrap();
+                            }
+                            OPCODE_COMMENT => {
+                                let comment = Comment::deserialize(payload.to_string());
+                                exchange.publish(Publish::new(
+                                    json!({
+                                        "id": comment.id,
+                                        "permalink": comment.permalink
+                                    }).to_string().as_bytes(),
+                                    QUEUE_COMMENTS
+                                )).unwrap();
+                            }
+                            _ => {}
+                        }
+
+                        if posts_done && comments_done {
                             break;
                         }
-            
-                        let post = Post::deserialize(msg);
-                        println!("{} received", post.id);
-
-                        exchange.publish(Publish::new(
-                            post.score.as_bytes(),
-                            "score"
-                        )).unwrap();
                     }
                 }
                 
                 // receive avg score from avg_worker
-                // TO DO
+                let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
+                for message in consumer_score_avg.receiver().iter() {
+                    match message {
+                        ConsumerMessage::Delivery(delivery) => {
+                            let body = String::from_utf8_lossy(&delivery.body);
+                            println!("avg result {}", body);
+                            consumer_score_avg.ack(delivery).unwrap();
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();
