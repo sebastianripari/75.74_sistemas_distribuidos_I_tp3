@@ -111,10 +111,6 @@ fn main() {
                                 println!("posts done");
                             }
                             OPCODE_COMMENT_END => {
-                                exchange.publish(Publish::new(
-                                    "end_of_comments".as_bytes(),
-                                    QUEUE_COMMENTS
-                                )).unwrap();
                                 comments_done = true;
                                 println!("comments done");
                             }

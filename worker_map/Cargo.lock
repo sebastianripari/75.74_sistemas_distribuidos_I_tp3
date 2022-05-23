@@ -1037,6 +1037,7 @@ name = "worker_map"
 version = "0.1.0"
 dependencies = [
  "amiquip",
+ "regex",
  "serde_json",
 ]
 

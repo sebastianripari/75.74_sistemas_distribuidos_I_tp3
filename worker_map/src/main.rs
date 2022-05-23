@@ -1,5 +1,6 @@
 use std::{thread, time::Duration};
 use serde_json::{json, Value};
+use regex::Regex;
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 
 const QUEUE_COMMENTS: &str = "QUEUE_COMMENTS";
@@ -31,10 +32,11 @@ fn main() {
 
                 let comment: Value = serde_json::from_str(&body).unwrap();
                 
-                println!("id: {}", comment["id"]);
-                println!("permalink: {}", comment["permalink"]);
-
-                println!("comment to map {}", body);
+                let comment_id = comment["id"].to_string();
+                let permalink = comment["permalink"].to_string();
+                let regex = Regex::new(r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*").unwrap();
+                let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
+                
                 consumer.ack(delivery).unwrap();
             }
             _ => {}
