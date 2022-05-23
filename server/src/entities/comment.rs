@@ -5,7 +5,7 @@ pub struct Comment {
     subreddit_nsfw: String,
     created_utc: String,
     pub permalink: String,
-    body: String,
+    pub body: String,
     pub sentiment: String,
     pub score: String
 }

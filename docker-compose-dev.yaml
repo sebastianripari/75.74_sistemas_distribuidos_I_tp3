@@ -56,6 +56,15 @@ services:
     networks:
       - tp2_net
 
+  worker_filter:
+    container_name: worker_filter
+    image: worker_filter:latest
+    entrypoint: /target/release/worker_filter
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+
 networks:
   tp2_net:
     ipam:

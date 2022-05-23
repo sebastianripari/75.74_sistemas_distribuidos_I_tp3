@@ -1,14 +1,19 @@
 use std::{thread, time::Duration};
 use serde_json::{Value};
-use regex::Regex;
-use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
-const QUEUE_COMMENTS_PERMALINK: &str = "QUEUE_COMMENTS_PERMALINK";
+const QUEUE_COMMENTS_BODY: &str = "QUEUE_COMMENTS_BODY";
 
-const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
+const STUDENTS_WORDS: [&'static str; 5] = [
+    "university",
+    "college",
+    "student",
+    "teacher",
+    "professor"
+];
 
 fn main() {
-    println!("worker map start");
+    println!("worker filter start");
 
     thread::sleep(Duration::from_secs(20));
 
@@ -24,22 +29,27 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue_comments_permalink = channel.queue_declare(QUEUE_COMMENTS_PERMALINK, QueueDeclareOptions::default()).unwrap();
-    let consumer = queue_comments_permalink.consume(ConsumerOptions::default()).unwrap();
+    let queue_comments_body = channel.queue_declare(QUEUE_COMMENTS_BODY, QueueDeclareOptions::default()).unwrap();
+    let consumer = queue_comments_body.consume(ConsumerOptions::default()).unwrap();
 
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-
                 let comment: Value = serde_json::from_str(&body).unwrap();
-                
+
                 let comment_id = comment["id"].to_string();
-                let permalink = comment["permalink"].to_string();
-                let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
-                let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
+                let body = comment["body"].to_string();
+
+                let mut student_body = false;
+                for word in STUDENTS_WORDS {
+                    if body.contains(word) {
+                        student_body = true;
+                        break;
+                    }
+                }
                 
-                println!("post id found {}", post_id);
+                println!("is a student body?: {}", student_body);
 
                 consumer.ack(delivery).unwrap();
             }
@@ -47,9 +57,5 @@ fn main() {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
-    }
-
-
+    println!("worker filter shutdown");
 }

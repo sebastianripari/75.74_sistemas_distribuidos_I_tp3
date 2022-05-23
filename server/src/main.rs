@@ -10,7 +10,8 @@ mod entities;
 const PORT_DEFAULT: &str = "12345";
 
 const QUEUE_SCORES: &str = "QUEUE_SCORES";
-const QUEUE_COMMENTS: &str = "QUEUE_COMMENTS";
+const QUEUE_COMMENTS_PERMALINK: &str = "QUEUE_COMMENTS_PERMALINK";
+const QUEUE_COMMENTS_BODY: &str = "QUEUE_COMMENTS_BODY";
 const QUEUE_SCORE_AVG: &str = "QUEUE_SCORE_AVG";
 
 const OPCODE_POST: u8 = 0;
@@ -123,13 +124,23 @@ fn main() {
                             }
                             OPCODE_COMMENT => {
                                 let comment = Comment::deserialize(payload.to_string());
+
                                 exchange.publish(Publish::new(
                                     json!({
                                         "id": comment.id,
                                         "permalink": comment.permalink
                                     }).to_string().as_bytes(),
-                                    QUEUE_COMMENTS
+                                    QUEUE_COMMENTS_PERMALINK
                                 )).unwrap();
+
+                                exchange.publish(Publish::new(
+                                    json!({
+                                        "id": comment.id,
+                                        "body": comment.body
+                                    }).to_string().as_bytes(),
+                                    QUEUE_COMMENTS_BODY
+                                )).unwrap();
+
                             }
                             _ => {}
                         }

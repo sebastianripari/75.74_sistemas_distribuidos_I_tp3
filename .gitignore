@@ -3,4 +3,5 @@ server/target
 client/target
 worker_avg/target
 worker_map/target
+worker_filter/target
 posts_full.csv
