@@ -73,6 +73,8 @@ fn main() {
                 _ => {}
             }
 
+            println!("n posts (score > score_avg) to join: {}", posts.len());
+
             println!("===== Result: 2 =====");
             for message in consumer_comments.receiver().iter() {
                 match message {
