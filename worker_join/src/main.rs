@@ -75,18 +75,17 @@ fn main() {
 
             println!("n posts (score > score_avg) to join: {}", posts.len());
 
-            println!("===== Result: 2 =====");
             for message in consumer_comments.receiver().iter() {
                 match message {
                     ConsumerMessage::Delivery(delivery) => {
                         let body = String::from_utf8_lossy(&delivery.body);
                         let value: Value = serde_json::from_str(&body).unwrap();
-        
+                        println!("processing: {}", value);
                         let post_id = value["post_id"].to_string();
         
                         for post in posts.iter_mut() {
                             if post.id == post_id {
-                                println!("{:?}", post);
+                                println!("match: {}, url: {}", post.id, post.url);
                                 break;
                             }
                         }
@@ -96,7 +95,6 @@ fn main() {
                     _ => {}
                 }
             }
-            println!("===== =====")
         }
 
         posts.clear()

@@ -3,7 +3,10 @@ use serde_json::{Value, json};
 use regex::Regex;
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions, Publish, Exchange};
 
+// queue input
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
+
+// queue output
 const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
@@ -41,7 +44,7 @@ fn main() {
                 }
 
                 let value: Value = serde_json::from_str(&body).unwrap();
-                
+                println!("processing: {}", value);
                 let permalink = value["permalink"].to_string();
 
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();

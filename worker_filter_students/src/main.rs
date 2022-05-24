@@ -46,7 +46,7 @@ fn main() {
                 }
 
                 let value: Value = serde_json::from_str(&body).unwrap();
-    
+                println!("processing: {}", value);
                 let permalink = value["permalink"].to_string();
     
                 for word in STUDENTS_WORDS {
