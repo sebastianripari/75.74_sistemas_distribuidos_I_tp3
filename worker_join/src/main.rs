@@ -62,10 +62,9 @@ fn main() {
                     let value: Value = serde_json::from_str(&body).unwrap();
     
                     let post_id = value["post_id"].to_string();
-                    let score = value["score"].to_string().parse::<i32>().unwrap();
                     let url = value["url"].to_string();
     
-                    let post = Post::new(post_id, score, url);
+                    let post = Post::new(post_id, url);
     
                     posts.push(post);
     

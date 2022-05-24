@@ -139,7 +139,7 @@ fn main() {
                                         "score": post.score,
                                         "url": post.url,
                                     }).to_string().as_bytes(),
-                                    QUEUE_COMMENTS_TO_FILTER_SCORE
+                                    QUEUE_POSTS_TO_FILTER_SCORE
                                 )).unwrap();
 
                             }
