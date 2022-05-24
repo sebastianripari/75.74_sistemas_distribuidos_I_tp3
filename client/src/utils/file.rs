@@ -11,7 +11,7 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter) {
             for line_result in reader.lines().skip(1) {
                 if let Ok(line) = line_result {
                     if let Ok(post) = Post::from_file(line) {
-                        println!("{} sent", post.id);
+                        println!("sent post: id {} ", post.id);
                         writter.send(format!("{}|{}", OPCODE_POST, post.serialize()))
                     } else {
                         println!("bad post")

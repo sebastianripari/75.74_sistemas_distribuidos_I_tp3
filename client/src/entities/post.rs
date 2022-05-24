@@ -10,7 +10,7 @@ pub struct Post {
     url: String,
     selftext: String,
     title: String,
-    score: String
+    score: i32
 }
 
 impl Post {
@@ -32,7 +32,7 @@ impl Post {
             url: parts[8].to_string(),
             selftext: parts[9].to_string(),
             title: parts[10].to_string(),
-            score: parts[11].to_string()
+            score: parts[11].to_string().parse::<i32>().unwrap()
         })
     }
 

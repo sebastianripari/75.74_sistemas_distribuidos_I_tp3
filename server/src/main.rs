@@ -9,10 +9,11 @@ mod entities;
 
 const PORT_DEFAULT: &str = "12345";
 
-const QUEUE_SCORES: &str = "QUEUE_SCORES";
-const QUEUE_COMMENTS_PERMALINK: &str = "QUEUE_COMMENTS_PERMALINK";
-const QUEUE_COMMENTS_BODY: &str = "QUEUE_COMMENTS_BODY";
-const QUEUE_SCORE_AVG: &str = "QUEUE_SCORE_AVG";
+const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
+const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
+
+const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
+const QUEUE_COMMENTS_TO_FILTER_SCORE: &str = "QUEUE_COMMENTS_TO_FILTER_SCORE";
 
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
@@ -64,7 +65,6 @@ fn main() {
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
-    let queue_score_avg = channel.queue_declare(QUEUE_SCORE_AVG, QueueDeclareOptions::default()).unwrap();
 
     let listener;
     println!("binding on {}", format!("172.25.125.2:{}", port));
@@ -104,11 +104,18 @@ fn main() {
 
                         match opcode {
                             OPCODE_POST_END => {
-                                exchange.publish(Publish::new(
-                                    "end_of_posts".as_bytes(),
-                                    QUEUE_SCORES
-                                )).unwrap();
                                 posts_done = true;
+
+                                exchange.publish(Publish::new(
+                                    "end".to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_AVG
+                                )).unwrap();
+
+                                exchange.publish(Publish::new(
+                                    "end".to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_FILTER_SCORE
+                                )).unwrap();
+                                
                                 println!("posts done");
                             }
                             OPCODE_COMMENT_END => {
@@ -117,28 +124,34 @@ fn main() {
                             }
                             OPCODE_POST => {
                                 let post = Post::deserialize(payload.to_string());
+                                println!("received post: id {}", post.id);
+
                                 exchange.publish(Publish::new(
-                                    post.score.as_bytes(),
-                                    QUEUE_SCORES
+                                    json!({
+                                        "score": post.score,
+                                    }).to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_AVG
                                 )).unwrap();
+
+                                exchange.publish(Publish::new(
+                                    json!({
+                                        "post_id": post.id,
+                                        "score": post.score,
+                                        "url": post.url,
+                                    }).to_string().as_bytes(),
+                                    QUEUE_COMMENTS_TO_FILTER_SCORE
+                                )).unwrap();
+
                             }
                             OPCODE_COMMENT => {
                                 let comment = Comment::deserialize(payload.to_string());
 
                                 exchange.publish(Publish::new(
                                     json!({
-                                        "id": comment.id,
-                                        "permalink": comment.permalink
-                                    }).to_string().as_bytes(),
-                                    QUEUE_COMMENTS_PERMALINK
-                                )).unwrap();
-
-                                exchange.publish(Publish::new(
-                                    json!({
-                                        "id": comment.id,
+                                        "permalink": comment.permalink,
                                         "body": comment.body
                                     }).to_string().as_bytes(),
-                                    QUEUE_COMMENTS_BODY
+                                    QUEUE_COMMENTS_TO_FILTER_STUDENTS
                                 )).unwrap();
 
                             }
@@ -148,20 +161,6 @@ fn main() {
                         if posts_done && comments_done {
                             break;
                         }
-                    }
-                }
-                
-                // receive avg score from avg_worker
-                let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
-                for message in consumer_score_avg.receiver().iter() {
-                    match message {
-                        ConsumerMessage::Delivery(delivery) => {
-                            let body = String::from_utf8_lossy(&delivery.body);
-                            println!("avg result {}", body);
-                            consumer_score_avg.ack(delivery).unwrap();
-                            break;
-                        }
-                        _ => {}
                     }
                 }
             }

@@ -56,10 +56,28 @@ services:
     networks:
       - tp2_net
 
-  worker_filter:
-    container_name: worker_filter
-    image: worker_filter:latest
-    entrypoint: /target/release/worker_filter
+  worker_filter_students:
+    container_name: worker_filter_students
+    image: worker_filter_students:latest
+    entrypoint: /target/release/worker_filter_students
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+  
+  worker_filter_score:
+    container_name: worker_filter_score
+    image: worker_filter_score:latest
+    entrypoint: /target/release/worker_filter_score
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+
+  worker_join:
+    container_name: worker_join
+    image: worker_join:latest
+    entrypoint: /target/release/worker_join
     depends_on:
       - server
     networks:

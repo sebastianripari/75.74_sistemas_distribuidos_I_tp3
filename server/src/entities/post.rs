@@ -7,10 +7,10 @@ pub struct Post {
     created_utc: String,
     permalink: String,
     domain: String,
-    url: String,
+    pub url: String,
     selftext: String,
     title: String,
-    pub score: String
+    pub score: i32
 }
 
 impl Post {
@@ -28,7 +28,7 @@ impl Post {
             url: parts[7].to_string(),
             selftext: parts[8].to_string(),
             title: parts[9].to_string(),
-            score: parts[10].to_string()
+            score: parts[10].to_string().parse::<i32>().unwrap()
         }
     }
 }

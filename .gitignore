@@ -3,5 +3,8 @@ server/target
 client/target
 worker_avg/target
 worker_map/target
-worker_filter/target
+worker_filter_students/target
+worker_filter_score/target
+worker_join/target
 posts_full.csv
+comments_full.csv

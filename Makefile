@@ -19,7 +19,9 @@ docker-image:
 	docker build -f ./server/Dockerfile -t "server:latest" .
 	docker build -f ./worker_avg/Dockerfile -t "worker_avg:latest" .
 	docker build -f ./worker_map/Dockerfile -t "worker_map:latest" .
-	docker build -f ./worker_filter/Dockerfile -t "worker_filter:latest" .
+	docker build -f ./worker_filter_score/Dockerfile -t "worker_filter_score:latest" .
+	docker build -f ./worker_filter_students/Dockerfile -t "worker_filter_students:latest" .
+	docker build -f ./worker_join/Dockerfile -t "worker_join:latest" .
 	docker build -f ./client/Dockerfile -t "client:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 

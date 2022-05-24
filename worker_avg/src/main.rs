@@ -1,15 +1,17 @@
 use std::{time::Duration, thread};
+use serde_json::{Value, json};
+use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
 
-use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Exchange, Publish};
+// input
+const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 
-const QUEUE_SCORE: &str = "QUEUE_SCORE";
-const QUEUE_SCORE_AVG: &str = "QUEUE_SCORE_AVG";
+// output
+const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 
 fn main() {
-    println!("worker avg start");
+    println!("start");
 
-    let mut score_count = 0;
-    let mut score_sum = 0;
+    let mut stop = false;
 
     thread::sleep(Duration::from_secs(20));
 
@@ -25,30 +27,58 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let queue = channel.queue_declare(QUEUE_POSTS_TO_AVG, QueueDeclareOptions::default()).unwrap();
+    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     let exchange = Exchange::direct(&channel);
-    let queue_score = channel.queue_declare(QUEUE_SCORE, QueueDeclareOptions::default()).unwrap();
-    let consumer = queue_score.consume(ConsumerOptions::default()).unwrap();
-    
-    for message in consumer.receiver().iter() {
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                println!("{} received", body);
-                if body == "end_of_posts" {
-                    exchange.publish(Publish::new(
-                        (score_sum / score_count).to_string().as_bytes(),
-                        QUEUE_SCORE_AVG
-                    )).unwrap();
-                    continue;
-                } else {
-                    score_count = score_count + 1;
-                    score_sum = score_sum + body.parse::<i32>().unwrap();
+
+    loop {
+        if stop {
+            break;
+        }
+
+
+        let mut score_count = 0;
+        let mut score_sum = 0;
+
+        for message in consumer.receiver().iter() {
+            match message {
+                ConsumerMessage::Delivery(delivery) => {
+                    let body = String::from_utf8_lossy(&delivery.body);
+
+                    if body == "stop" {
+                        stop = true;
+                        consumer.ack(delivery).unwrap();
+                        break;
+                    }
+
+                    if body == "end" {
+                        exchange.publish(Publish::new(
+                            json!({
+                                "score_avg": score_sum / score_count
+                            }).to_string().as_bytes(),
+                            AVG_TO_FILTER_SCORE
+                        )).unwrap();
+                        consumer.ack(delivery).unwrap();
+                        break;
+                    }
+
+                    let value: Value = serde_json::from_str(&body).unwrap();
+                    println!("processing: {}", value);
+                    let score = value["score"].to_string();
+                    match score.parse::<i32>() {
+                        Ok(score) => {
+                            score_count = score_count + 1;
+                            score_sum = score_sum + score;
+                        }
+                        Err(err) => {
+                            println!("error: {}", err)
+                        }
+                    } 
+                    
+                    consumer.ack(delivery).unwrap();
                 }
-                consumer.ack(delivery).unwrap();
-            }
-            other => {
-                println!("Consumer ended: {:?}", other);
-                break;
+                _ => {
+                }
             }
         }
     }
@@ -57,5 +87,5 @@ fn main() {
         println!("rabbitmq connection closed")
     }
 
-    println!("worker avg shutdown");
+    println!("shutdown");
 }
