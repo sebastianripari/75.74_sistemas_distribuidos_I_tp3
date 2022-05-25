@@ -15,7 +15,7 @@ services:
     image: client:latest
     environment:
       - SERVER_PORT=12350
-      - FILENAME_POSTS=posts.csv
+      - FILENAME_POSTS=posts_full.csv
       - FILENAME_COMMENTS=comments.csv
     entrypoint: /target/release/client
     volumes:

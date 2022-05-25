@@ -15,7 +15,18 @@ pub struct Post {
 
 impl Post {
     pub fn deserialize(s: String) -> Post {
-        let split: Vec<&str> = s.split(',').collect();
+        let split: Vec<&str> = s.split("_p_f_d_").collect();
+        
+        println!("deserialize: {}", s);
+        let mut score = 0;
+        match split[10].to_string().parse::<i32>() {
+            Ok(value) => {
+                score = value;
+            }
+            Err(err) => {
+                panic!("s: {}, err: {}, score: {}", s, err, split[10].to_string());
+            }
+        }
 
         Post {
             id: split[0].to_string(),
@@ -27,8 +38,8 @@ impl Post {
             domain: split[6].to_string(),
             url: split[7].to_string(),
             selftext: split[8].to_string(),
-            title: split[8].to_string(),
-            score: split[10].to_string().parse::<i32>().unwrap()
+            title: split[9].to_string(),
+            score: score
         }
     }
 }

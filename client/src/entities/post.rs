@@ -1,3 +1,5 @@
+use csv::StringRecord;
+
 #[derive(Debug)]
 pub struct Post {
     pub id: String,
@@ -14,30 +16,25 @@ pub struct Post {
 }
 
 impl Post {
-    pub fn from_file(s: String) -> Result<Post, String> {
-        let parts: Vec<&str> = s.split(',').collect();
-
-        if parts.len() != 12 {
-            return Err("bad row".to_string())
-        }
-
+    pub fn from_file(s: StringRecord) -> Result<Post, String> {
         Ok(Post{
-            id: parts[1].to_string(),
-            subreddit_id: parts[2].to_string(),
-            subreddit_name: parts[3].to_string(),
-            subreddit_nsfw: parts[4].to_string(),
-            created_utc: parts[5].to_string(),
-            permalink: parts[6].to_string(),
-            domain: parts[7].to_string(),
-            url: parts[8].to_string(),
-            selftext: parts[9].to_string(),
-            title: parts[10].to_string(),
-            score: parts[11].to_string().parse::<i32>().unwrap()
+            id: s[1].to_string(),
+            subreddit_id: s[2].to_string(),
+            subreddit_name: s[3].to_string(),
+            subreddit_nsfw: s[4].to_string(),
+            created_utc: s[5].to_string(),
+            permalink: s[6].to_string(),
+            domain: s[7].to_string(),
+            url: s[8].to_string(),
+            selftext: s[9].to_string().replace('\n', " "),
+            title: s[10].to_string().replace('\n', " "),
+            score: s[11].to_string().parse::<i32>().unwrap(),
         })
     }
 
     pub fn serialize(&self) -> String {
-        format!("{},{},{},{},{},{},{},{},{},{},{},\n",
+        // _p_f_d_: post field delimiter
+        format!("{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_\n",
             self.id,
             self.subreddit_id,
             self.subreddit_name,
