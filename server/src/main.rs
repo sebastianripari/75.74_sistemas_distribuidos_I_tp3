@@ -1,6 +1,6 @@
 use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env, process::Command};
 
-use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
+use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Consumer};
 
 use crate::{utils::socket::{SocketReader, SocketWriter}, entities::{post::Post, comment::Comment}};
 use serde_json::{json, Value};
@@ -28,6 +28,24 @@ fn cleaner_handler(
     receiver_signal.recv().unwrap();
     if let Ok(mut running) = running_lock.write() {
         *running = false; 
+    }
+}
+
+fn send_to_client(c: &mut Connection) {
+    let channel = c.open_channel(None).unwrap();
+    let queue_to_client = channel.queue_declare(QUEUE_TO_CLIENT, QueueDeclareOptions::default()).unwrap();
+    let consumer_to_client = queue_to_client.consume(ConsumerOptions::default()).unwrap();
+
+    // send to client responses
+    for message in consumer_to_client.receiver().iter() {
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+                let body = String::from_utf8_lossy(&delivery.body);
+                let value: Value = serde_json::from_str(&body).unwrap();
+                println!("send to client: {}", value)
+            }
+            _ => {}
+        }
     }
 }
 
@@ -67,9 +85,6 @@ fn main() {
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
 
-    let queue_to_client = channel.queue_declare(QUEUE_TO_CLIENT, QueueDeclareOptions::default()).unwrap();
-    let consumer_to_client = queue_to_client.consume(ConsumerOptions::default()).unwrap();
-
     let listener;
     println!("binding on {}", format!("172.25.125.2:{}", port));
     match TcpListener::bind(format!("172.25.125.2:{}", port)) {
@@ -86,6 +101,8 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
+    thread::spawn(move || send_to_client(&mut rabbitmq_connection));
+
     for stream_result in listener.incoming() {
         match stream_result {
             Ok(stream) => {
@@ -94,7 +111,7 @@ fn main() {
                 let (mut socket_reader, mut socket_writer) = (
                     SocketReader::new(stream),
                     SocketWriter::new(stream_clone)
-                );
+                );                
 
                 let mut posts_done = false;
                 let mut comments_done = false;
@@ -167,19 +184,6 @@ fn main() {
                         }
                     }
                 }
-
-                // send to client responses
-                for message in consumer_to_client.receiver().iter() {
-                    match message {
-                        ConsumerMessage::Delivery(delivery) => {
-                            let body = String::from_utf8_lossy(&delivery.body);
-                            let value: Value = serde_json::from_str(&body).unwrap();
-                            println!("send to client: {}", value)
-                        }
-                        _ => {}
-                    }
-                }
-
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();
@@ -195,9 +199,11 @@ fn main() {
         }
     }
 
+    /*
     if let Ok(_) = rabbitmq_connection.close() {
         println!("rabbitmq connection closed")
     }
+    */
 
     if let Ok(_) = cleaner.join() {
         println!("cleaner stop")
