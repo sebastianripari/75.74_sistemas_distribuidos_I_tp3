@@ -18,7 +18,7 @@ const STUDENTS_WORDS: [&'static str; 5] = [
 fn main() {
     println!("worker filter student start");
 
-    thread::sleep(Duration::from_secs(20));
+    thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
     match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {

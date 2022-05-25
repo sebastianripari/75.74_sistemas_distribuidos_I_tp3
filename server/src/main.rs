@@ -69,7 +69,7 @@ fn main() {
     cleaner = thread::spawn(move || cleaner_handler(receiver_signal, running_lock_clone));
 
     // wait rabbitmq start
-    thread::sleep(Duration::from_secs(20));
+    thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
     match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
@@ -121,7 +121,7 @@ fn main() {
                         let splited: Vec<&str>  = msg.split('|').collect();
 
                         let opcode = splited[0].parse::<u8>().unwrap();
-                        let payload = splited[1];
+                        let payload = splited[1..].join("|");
 
                         match opcode {
                             OPCODE_POST_END => {
