@@ -1,14 +1,19 @@
 use std::{thread, time::Duration};
 
-use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
-use serde_json::Value;
+use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
+use serde_json::{Value, json};
 
 use crate::entities::post::Post;
 
 mod entities;
 
+// queue input
 const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
 const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
+
+// queue output
+const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
+
 
 fn main() {
     println!("worker join start");
@@ -31,6 +36,7 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let exchange = Exchange::direct(&channel);
 
     let queue_posts_to_join = channel.queue_declare(QUEUE_POSTS_TO_JOIN, QueueDeclareOptions::default()).unwrap();
     let queue_comments_to_join = channel.queue_declare(QUEUE_COMMENTS_TO_JOIN, QueueDeclareOptions::default()).unwrap();
@@ -86,6 +92,12 @@ fn main() {
                         for post in posts.iter_mut() {
                             if post.id == post_id {
                                 println!("match: {}, url: {}", post.id, post.url);
+                                exchange.publish(Publish::new(
+                                    json!({
+                                        "url": post.url
+                                    }).to_string().as_bytes(),
+                                    QUEUE_TO_CLIENT
+                                )).unwrap();
                                 break;
                             }
                         }

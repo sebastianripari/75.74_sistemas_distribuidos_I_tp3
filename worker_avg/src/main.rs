@@ -7,6 +7,7 @@ const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 
 // output
 const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
+const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 fn main() {
     println!("start");
@@ -36,7 +37,6 @@ fn main() {
             break;
         }
 
-
         let mut score_count = 0;
         let mut score_sum = 0;
 
@@ -58,6 +58,14 @@ fn main() {
                             }).to_string().as_bytes(),
                             AVG_TO_FILTER_SCORE
                         )).unwrap();
+
+                        exchange.publish(Publish::new(
+                            json!({
+                                "score_avg": score_sum / score_count
+                            }).to_string().as_bytes(),
+                            QUEUE_TO_CLIENT
+                        )).unwrap();
+
                         consumer.ack(delivery).unwrap();
                         break;
                     }

@@ -3,11 +3,13 @@ use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Recei
 use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
 use crate::{utils::socket::{SocketReader, SocketWriter}, entities::{post::Post, comment::Comment}};
-use serde_json::json;
+use serde_json::{json, Value};
 mod utils;
 mod entities;
 
 const PORT_DEFAULT: &str = "12345";
+
+const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
@@ -64,6 +66,9 @@ fn main() {
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
+
+    let queue_to_client = channel.queue_declare(QUEUE_TO_CLIENT, QueueDeclareOptions::default()).unwrap();
+    let consumer_to_client = queue_to_client.consume(ConsumerOptions::default()).unwrap();
 
     let listener;
     println!("binding on {}", format!("172.25.125.2:{}", port));
@@ -162,6 +167,19 @@ fn main() {
                         }
                     }
                 }
+
+                // send to client responses
+                for message in consumer_to_client.receiver().iter() {
+                    match message {
+                        ConsumerMessage::Delivery(delivery) => {
+                            let body = String::from_utf8_lossy(&delivery.body);
+                            let value: Value = serde_json::from_str(&body).unwrap();
+                            println!("send to client: {}", value)
+                        }
+                        _ => {}
+                    }
+                }
+
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();
