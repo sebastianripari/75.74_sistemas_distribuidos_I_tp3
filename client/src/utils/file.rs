@@ -13,9 +13,9 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter) {
                 if let Ok(line) = line_result {
                     if let Ok(post) = Post::from_file(line) {
                         posts.push(post.serialize());
-                        if posts.len() == 10 {
+                        if posts.len() == 100 {
                             println!("sent posts");
-                            writter.send(format!("{}|{}\n", OPCODE_POST, posts.join("")));
+                            writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
                             posts.clear();
                         }
                     } else {
@@ -28,8 +28,8 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter) {
             println!("could not open file");
         }
     }
-    writter.send(format!("{}|{}\n", OPCODE_POST, posts.join("")));
-    writter.send(format!("{}|\n", OPCODE_POST_END));
+    writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
+    writter.send(format!("{}|", OPCODE_POST_END));
 }
 
 pub fn send_comments_from_file(path: String, writter: &mut SocketWriter) {
@@ -51,5 +51,5 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter) {
             println!("could not open file");
         }
     }
-    writter.send(format!("{}|\n", OPCODE_COMMENT_END));
+    writter.send(format!("{}|", OPCODE_COMMENT_END));
 }
