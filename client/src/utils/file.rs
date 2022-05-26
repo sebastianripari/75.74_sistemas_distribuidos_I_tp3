@@ -34,6 +34,7 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
         }
     }
     writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
+    logger.info("all sent".to_string());
     writter.send(format!("{}|", OPCODE_POST_END));
 }
 
