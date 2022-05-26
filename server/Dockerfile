@@ -1,6 +1,4 @@
 FROM rust
-RUN apt update
-RUN apt install net-tools
 COPY server /
 RUN cargo build --release
 ENTRYPOINT ["/bin/sh"]

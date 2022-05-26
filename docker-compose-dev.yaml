@@ -6,6 +6,7 @@ services:
     image: server:latest
     environment:
       - SERVER_PORT=12350
+      - LOG_LEVEL=info
     entrypoint: /target/release/server
     networks:
       - tp2_net

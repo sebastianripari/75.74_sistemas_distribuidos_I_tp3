@@ -27,7 +27,6 @@ impl Post {
 
     pub fn deserialize(s: String) -> Post {
         let split: Vec<&str> = s.split("_p_f_d_").collect();
-        println!("split: {:?}", split);
 
         let mut score = 0;
         match split[10].to_string().parse::<i32>() {

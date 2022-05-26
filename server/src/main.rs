@@ -1,19 +1,18 @@
-use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env, process::Command};
+use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Receiver}, Arc, RwLock}, env};
 
-use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Consumer};
+use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
-use crate::{utils::socket::{SocketReader, SocketWriter}, entities::{post::Post, comment::Comment}};
+use crate::{utils::{socket::{SocketReader, SocketWriter}, logger::Logger}, entities::{post::Post, comment::Comment}};
 use serde_json::{json, Value};
 mod utils;
 mod entities;
 
 const PORT_DEFAULT: &str = "12345";
+const LOG_LEVEL: &str = "debug";
 
 const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
-
 const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
-
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 
 const OPCODE_POST: u8 = 0;
@@ -50,14 +49,19 @@ fn send_to_client(c: &mut Connection) {
 }
 
 fn main() {
-    println!("server start");
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
 
-    println!("ifconfig: {:?}", Command::new("ifconfig").output());
+    logger.info("start".to_string());
 
     let mut port = PORT_DEFAULT.to_string();
     let cleaner;
     let (sender_signal, receiver_signal) = channel();
     let running_lock = Arc::new(RwLock::new(true));
+    let mut n_post_received = 0;
 
     let mut running_lock_clone = running_lock.clone();
 
@@ -68,13 +72,13 @@ fn main() {
     ctrlc::set_handler(move || sender_signal.send(()).unwrap()).unwrap();
     cleaner = thread::spawn(move || cleaner_handler(receiver_signal, running_lock_clone));
 
-    // wait rabbitmq start
+    // wait rabbitmq
     thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
     match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
         Ok(connection) => {
-            println!("connected with rabbitmq");
+            logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
         Err(_) => {
@@ -86,10 +90,10 @@ fn main() {
     let exchange = Exchange::direct(&channel);
 
     let listener;
-    println!("binding on {}", format!("172.25.125.2:{}", port));
+    logger.info(format!("binding on 172.25.125.2:{}", port));
     match TcpListener::bind(format!("172.25.125.2:{}", port)) {
         Ok(tcp_listener) => {
-            println!("server listening on port {}", port);
+            logger.info(format!("server listening on port {}", port));
             listener = tcp_listener;
         }
         Err(err) => {
@@ -137,16 +141,19 @@ fn main() {
                                     QUEUE_POSTS_TO_FILTER_SCORE
                                 )).unwrap();
                                 
-                                println!("posts done");
+                                logger.info("posts done".to_string());
                             }
                             OPCODE_COMMENT_END => {
                                 comments_done = true;
-                                println!("comments done");
+                                logger.info("comments done".to_string());
                             }
                             OPCODE_POST => {
                                 let posts = Post::deserialize_multiple(payload.to_string());
+
+                                n_post_received = n_post_received + posts.len();
+
                                 for post in posts {
-                                    println!("received post: id {}", post.id);
+                                    logger.debug(format!("received post: id {}", post.id));
 
                                     exchange.publish(Publish::new(
                                         json!({
@@ -157,6 +164,7 @@ fn main() {
                                     )).unwrap();
                                 }
 
+                                logger.info(format!("n post received: {}", n_post_received))
                                 /* 
                                 exchange.publish(Publish::new(
                                     json!({
@@ -211,8 +219,8 @@ fn main() {
     */
 
     if let Ok(_) = cleaner.join() {
-        println!("cleaner stop")
+        logger.info("cleaner stop".to_string())
     }
 
-    println!("server shutdown");
+    logger.info("server shutdown".to_string());
 }
