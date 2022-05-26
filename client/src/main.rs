@@ -2,6 +2,8 @@ use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread
 use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file, self}};
 
 const PORT_DEFAULT: u16 = 12345;
+const FILENAME_POSTS_DEFAULT: &str = "posts.csv";
+const FILENAME_COMMENTS_DEFAULT: &str = "comments.csv";
 
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
@@ -12,11 +14,11 @@ mod utils;
 mod entities;
 
 fn main() {
-    println!("client up");
+    println!("start");
 
     let mut port = PORT_DEFAULT;
-    let mut filename_posts = "posts.csv".to_string();
-    let mut filename_comments = "comments.csv".to_string();
+    let mut filename_posts = FILENAME_POSTS_DEFAULT.to_string();
+    let mut filename_comments = FILENAME_COMMENTS_DEFAULT.to_string();
 
     if let Ok(p) = env::var("SERVER_PORT") {
         port = p.parse::<u16>().unwrap();
@@ -55,5 +57,5 @@ fn main() {
     send_posts_from_file(filename_posts, &mut writer);
     send_comments_from_file(filename_comments, &mut writer);
 
-    println!("client shutdown")
+    println!("shutdown")
 }
