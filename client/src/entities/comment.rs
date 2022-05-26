@@ -1,3 +1,5 @@
+use csv::StringRecord;
+
 pub struct Comment {
     pub id: String,
     subreddit_id: String,
@@ -11,24 +13,24 @@ pub struct Comment {
 }
 
 impl Comment {
-    pub fn from_file(s: String) -> Result<Comment, String> {
-        let parts: Vec<&str> = s.split(',').collect();
-
+    pub fn from_file(s: StringRecord) -> Result<Comment, String> {
         Ok(Comment{
-            id: parts[1].to_string(),
-            subreddit_id: parts[2].to_string(),
-            subreddit_name: parts[3].to_string(),
-            subreddit_nsfw: parts[4].to_string(),
-            created_utc: parts[5].to_string(),
-            permalink: parts[6].to_string(),
-            body: parts[7].to_string(),
-            sentiment: parts[8].to_string(),
-            score: parts[9].to_string()
+            id: s[1].to_string(),
+            subreddit_id: s[2].to_string(),
+            subreddit_name: s[3].to_string(),
+            subreddit_nsfw: s[4].to_string(),
+            created_utc: s[5].to_string(),
+            permalink: s[6].to_string(),
+            body: s[7].to_string(),
+            sentiment: s[8].to_string(),
+            score: s[9].to_string()
         })
     }
 
     pub fn serialize(&self) -> String {
-        format!("{},{},{},{},{},{},{},{},{},\n",
+        // _c_f_d_: comment field delimiter
+        // _c_e_d_: comment field delimiter
+        format!("{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_f_d_{}_c_e_d_",
             self.id,
             self.subreddit_id,
             self.subreddit_name,

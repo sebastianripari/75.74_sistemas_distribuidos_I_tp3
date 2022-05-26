@@ -41,8 +41,8 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
 pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger: &Logger) {
     match OpenOptions::new().read(true).open(path) {
         Ok(file) => {
-            let reader = BufReader::new(file);
-            for line_result in reader.lines().skip(1) {
+            let mut reader = csv::Reader::from_reader(file);
+            for line_result in reader.records() {
                 if let Ok(line) = line_result {
                     if let Ok(comment) = Comment::from_file(line) {
                         logger.debug(format!("about to send comment: {}", comment.id));
