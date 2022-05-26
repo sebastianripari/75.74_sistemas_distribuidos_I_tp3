@@ -1,9 +1,10 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
-use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file, self}};
+use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file, self}, logger::Logger};
 
 const PORT_DEFAULT: u16 = 12345;
 const FILENAME_POSTS_DEFAULT: &str = "posts.csv";
 const FILENAME_COMMENTS_DEFAULT: &str = "comments.csv";
+const LOG_LEVEL: &str = "debug";
 
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
@@ -14,7 +15,13 @@ mod utils;
 mod entities;
 
 fn main() {
-    println!("start");
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
+
+    logger.info("start".to_string());
 
     let mut port = PORT_DEFAULT;
     let mut filename_posts = FILENAME_POSTS_DEFAULT.to_string();
@@ -32,6 +39,7 @@ fn main() {
         filename_comments = filename;
     }
 
+    // wait server up
     thread::sleep(Duration::from_secs(32));
 
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(172, 25, 125, 2)), port);
@@ -51,11 +59,11 @@ fn main() {
         }
     }
 
-    println!("filename posts: {}", filename_posts);
-    println!("filename comments: {}", filename_comments);
+    logger.info(format!("filename posts: {}", filename_posts));
+    logger.info(format!("filename comments: {}", filename_comments));
 
-    send_posts_from_file(filename_posts, &mut writer);
-    send_comments_from_file(filename_comments, &mut writer);
+    send_posts_from_file(filename_posts, &mut writer, &logger);
+    send_comments_from_file(filename_comments, &mut writer, &logger);
 
-    println!("shutdown")
+    logger.info("shutdown".to_string());
 }

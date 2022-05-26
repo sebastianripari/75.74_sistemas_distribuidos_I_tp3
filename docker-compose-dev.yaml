@@ -17,6 +17,7 @@ services:
       - SERVER_PORT=12350
       - FILENAME_POSTS=posts_full.csv
       - FILENAME_COMMENTS=comments.csv
+      - LOG_LEVEL=info
     entrypoint: /target/release/client
     volumes:
       - ./posts.csv:/posts.csv
