@@ -98,8 +98,9 @@ fn main() {
                             logger.info(format!("error: {}", err))
                         }
                     }
-
-                    logger.info(format!("n processed: {}", score_count));
+                    if score_count % 100 == 0 {
+                        logger.info(format!("n processed: {}", score_count));
+                    }
                     consumer.ack(delivery).unwrap();
                 }
                 _ => {
