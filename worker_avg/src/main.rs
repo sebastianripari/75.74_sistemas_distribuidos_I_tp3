@@ -37,8 +37,8 @@ fn main() {
             break;
         }
 
-        let mut score_count = 0;
-        let mut score_sum = 0;
+        let mut score_count: u64 = 0;
+        let mut score_sum: u64 = 0;
 
         for message in consumer.receiver().iter() {
             match message {
@@ -46,12 +46,14 @@ fn main() {
                     let body = String::from_utf8_lossy(&delivery.body);
 
                     if body == "stop" {
+                        println!("doing stop");
                         stop = true;
                         consumer.ack(delivery).unwrap();
                         break;
                     }
 
                     if body == "end" {
+                        println!("doing end");
                         exchange.publish(Publish::new(
                             json!({
                                 "score_avg": score_sum / score_count
@@ -76,7 +78,7 @@ fn main() {
                     match score.parse::<i32>() {
                         Ok(score) => {
                             score_count = score_count + 1;
-                            score_sum = score_sum + score;
+                            score_sum = score_sum + score as u64;
                         }
                         Err(err) => {
                             println!("error: {}", err)
@@ -86,9 +88,11 @@ fn main() {
                     consumer.ack(delivery).unwrap();
                 }
                 _ => {
+                    println!("stop consuming");
                 }
             }
         }
+        println!("stop consuming");
     }
 
     if let Ok(_) = rabbitmq_connection.close() {

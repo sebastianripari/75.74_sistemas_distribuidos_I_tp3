@@ -25,7 +25,7 @@ impl Post {
             created_utc: s[5].to_string(),
             permalink: s[6].to_string(),
             domain: s[7].to_string(),
-            url: s[8].to_string(),
+            url: s[8].to_string().replace('\n', " "),
             selftext: s[9].to_string().replace('\n', " "),
             title: s[10].to_string().replace('\n', " "),
             score: s[11].to_string().parse::<i32>().unwrap(),

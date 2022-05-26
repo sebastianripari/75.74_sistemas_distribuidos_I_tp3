@@ -149,11 +149,13 @@ fn main() {
 
                                 exchange.publish(Publish::new(
                                     json!({
+                                        "post_id": post.id,
                                         "score": post.score,
                                     }).to_string().as_bytes(),
                                     QUEUE_POSTS_TO_AVG
                                 )).unwrap();
 
+                                /* 
                                 exchange.publish(Publish::new(
                                     json!({
                                         "post_id": post.id,
@@ -162,6 +164,7 @@ fn main() {
                                     }).to_string().as_bytes(),
                                     QUEUE_POSTS_TO_FILTER_SCORE
                                 )).unwrap();
+                                */
 
                             }
                             OPCODE_COMMENT => {
