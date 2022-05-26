@@ -24,6 +24,7 @@ impl SocketReader {
                 if bytes == 0 {
                     return None
                 } else {
+                    mensaje.pop();
                     return Some(mensaje);
                 }
             }

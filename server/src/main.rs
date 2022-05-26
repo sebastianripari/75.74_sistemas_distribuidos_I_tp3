@@ -144,16 +144,18 @@ fn main() {
                                 println!("comments done");
                             }
                             OPCODE_POST => {
-                                let post = Post::deserialize(payload.to_string());
-                                println!("received post: id {}", post.id);
+                                let posts = Post::deserialize_multiple(payload.to_string());
+                                for post in posts {
+                                    println!("received post: id {}", post.id);
 
-                                exchange.publish(Publish::new(
-                                    json!({
-                                        "post_id": post.id,
-                                        "score": post.score,
-                                    }).to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_AVG
-                                )).unwrap();
+                                    exchange.publish(Publish::new(
+                                        json!({
+                                            "post_id": post.id,
+                                            "score": post.score,
+                                        }).to_string().as_bytes(),
+                                        QUEUE_POSTS_TO_AVG
+                                    )).unwrap();
+                                }
 
                                 /* 
                                 exchange.publish(Publish::new(

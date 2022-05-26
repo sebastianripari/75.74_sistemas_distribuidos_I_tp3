@@ -5,14 +5,19 @@ use crate::{entities::{comment::Comment, post::Post}, OPCODE_POST, OPCODE_POST_E
 use super::socket::SocketWriter;
 
 pub fn send_posts_from_file(path: String, writter: &mut SocketWriter) {
+    let mut posts = Vec::new();
     match OpenOptions::new().read(true).open(path) {
         Ok(file) => {
             let mut reader = csv::Reader::from_reader(file);
             for line_result in reader.records() {
                 if let Ok(line) = line_result {
                     if let Ok(post) = Post::from_file(line) {
-                        println!("sent post {} ", post.id);
-                        writter.send(format!("{}|{}", OPCODE_POST, post.serialize()))
+                        posts.push(post.serialize());
+                        if posts.len() == 10 {
+                            println!("sent posts");
+                            writter.send(format!("{}|{}\n", OPCODE_POST, posts.join("")));
+                            posts.clear();
+                        }
                     } else {
                         println!("bad post")
                     }
@@ -23,6 +28,7 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter) {
             println!("could not open file");
         }
     }
+    writter.send(format!("{}|{}\n", OPCODE_POST, posts.join("")));
     writter.send(format!("{}|\n", OPCODE_POST_END));
 }
 

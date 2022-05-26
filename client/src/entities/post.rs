@@ -34,7 +34,8 @@ impl Post {
 
     pub fn serialize(&self) -> String {
         // _p_f_d_: post field delimiter
-        format!("{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_\n",
+        // _p_e_d_: post end
+        format!("{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_f_d_{}_p_e_d_",
             self.id,
             self.subreddit_id,
             self.subreddit_name,

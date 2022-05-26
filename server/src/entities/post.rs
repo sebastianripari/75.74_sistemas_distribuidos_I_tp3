@@ -14,10 +14,21 @@ pub struct Post {
 }
 
 impl Post {
+
+    pub fn deserialize_multiple(s: String) -> Vec<Post> {
+        let mut v = Vec::new();
+        let mut posts: Vec<&str> = s.split("_p_e_d_").collect();
+        posts.pop();
+        for post_str in posts {
+            v.push(Post::deserialize(post_str.to_string()))
+        }
+        v
+    }
+
     pub fn deserialize(s: String) -> Post {
         let split: Vec<&str> = s.split("_p_f_d_").collect();
-        
-        println!("deserialize: {}", s);
+        println!("split: {:?}", split);
+
         let mut score = 0;
         match split[10].to_string().parse::<i32>() {
             Ok(value) => {

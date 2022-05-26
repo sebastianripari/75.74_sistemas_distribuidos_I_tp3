@@ -12,23 +12,6 @@ impl SocketReader {
             reader: io::BufReader::new(stream.try_clone().unwrap())
         }
     }
-
-    pub fn receive(&mut self) -> Option<String> {
-        let mut mensaje = String::new();
-        match self.reader.read_line(&mut mensaje) {
-            Err(err) => {
-                println!("{}", err);
-                return None
-            }
-            Ok(bytes) => {
-                if bytes == 0 {
-                    return None
-                } else {
-                    return Some(mensaje);
-                }
-            }
-        }
-    }
 }
 
 pub struct SocketWriter {
