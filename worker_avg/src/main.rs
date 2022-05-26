@@ -1,25 +1,38 @@
-use std::{time::Duration, thread};
+use std::{time::Duration, thread, env};
 use serde_json::{Value, json};
 use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
 
-// input
+use crate::utils::logger::Logger;
+
+mod utils;
+
+const LOG_LEVEL: &str = "debug";
+
+// queue input
 const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 
-// output
+// queue output
 const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 fn main() {
-    println!("start");
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
+
+    logger.info("start".to_string());
 
     let mut stop = false;
 
+    // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
     match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
         Ok(connection) => {
-            println!("connected with rabbitmq");
+            logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
         Err(_) => {
@@ -46,14 +59,15 @@ fn main() {
                     let body = String::from_utf8_lossy(&delivery.body);
 
                     if body == "stop" {
-                        println!("doing stop");
+                        logger.info("doing stop".to_string());
                         stop = true;
                         consumer.ack(delivery).unwrap();
                         break;
                     }
 
                     if body == "end" {
-                        println!("doing end");
+                        logger.info("doing end".to_string());
+
                         exchange.publish(Publish::new(
                             json!({
                                 "score_avg": score_sum / score_count
@@ -73,7 +87,7 @@ fn main() {
                     }
 
                     let value: Value = serde_json::from_str(&body).unwrap();
-                    println!("processing: {}", value);
+                    logger.debug(format!("processing: {}", value));
                     let score = value["score"].to_string();
                     match score.parse::<i32>() {
                         Ok(score) => {
@@ -81,23 +95,24 @@ fn main() {
                             score_sum = score_sum + score as u64;
                         }
                         Err(err) => {
-                            println!("error: {}", err)
+                            logger.info(format!("error: {}", err))
                         }
-                    } 
-                    
+                    }
+
+                    logger.info(format!("n processed: {}", score_count));
                     consumer.ack(delivery).unwrap();
                 }
                 _ => {
-                    println!("stop consuming");
+                    logger.info("stop consuming".to_string());
                 }
             }
         }
-        println!("stop consuming");
+        logger.info("stop consuming".to_string());
     }
 
     if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
+        logger.info("rabbitmq connection closed".to_string())
     }
 
-    println!("shutdown");
+    logger.info("shutdown".to_string());
 }

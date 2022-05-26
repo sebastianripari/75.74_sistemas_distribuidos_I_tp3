@@ -46,6 +46,8 @@ services:
     container_name: worker_avg
     image: worker_avg:latest
     entrypoint: /target/release/worker_avg
+    environment:
+      - LOG_LEVEL=info
     depends_on:
       - server
     networks:
