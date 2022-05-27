@@ -1,6 +1,7 @@
 bin/
 server/target
 client/target
+worker_initial_state/target
 worker_avg/target
 worker_map/target
 worker_filter_students/target

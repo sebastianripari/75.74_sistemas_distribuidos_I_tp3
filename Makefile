@@ -17,6 +17,7 @@ build: deps
 
 docker-image:
 	docker build -f ./server/Dockerfile -t "server:latest" .
+	docker build -f ./worker_initial_state/Dockerfile -t "worker_initial_state:latest" .
 	docker build -f ./worker_avg/Dockerfile -t "worker_avg:latest" .
 	docker build -f ./worker_map/Dockerfile -t "worker_map:latest" .
 	docker build -f ./worker_filter_score/Dockerfile -t "worker_filter_score:latest" .

@@ -42,6 +42,17 @@ services:
     ports:
      - 15672:15672
 
+  worker_initial_state:
+    container_name: worker_initial_state
+    image: worker_initial_state:latest
+    entrypoint: /target/release/worker_initial_state
+    environment:
+      - LOG_LEVEL=info
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+
   worker_avg:
     container_name: worker_avg
     image: worker_avg:latest

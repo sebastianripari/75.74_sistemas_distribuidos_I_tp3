@@ -18,6 +18,7 @@ const STUDENTS_WORDS: [&'static str; 5] = [
 fn main() {
     println!("worker filter student start");
 
+    // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;

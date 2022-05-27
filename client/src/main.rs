@@ -1,5 +1,5 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
-use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file, self}, logger::Logger};
+use crate::utils::{socket::{SocketWriter}, file::{send_posts_from_file, send_comments_from_file}, logger::Logger};
 
 const PORT_DEFAULT: u16 = 12345;
 const FILENAME_POSTS_DEFAULT: &str = "posts.csv";
@@ -44,14 +44,12 @@ fn main() {
 
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(172, 25, 125, 2)), port);
 
-    let mut reader;
     let mut writer;
 
     match TcpStream::connect(&address) {
         Ok(stream) => {
             println!("connected with the server");
             let stream_clone = stream.try_clone().unwrap();
-            reader = SocketReader::new(stream);
             writer = SocketWriter::new(stream_clone);
         }
         Err(err) => {
