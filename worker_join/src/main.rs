@@ -14,9 +14,8 @@ const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 // queue output
 const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
-
 fn main() {
-    println!("worker join start");
+    println!("start");
 
     let mut stop = false;
 

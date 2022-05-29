@@ -12,7 +12,7 @@ const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
 fn main() {
-    println!("worker map start");
+    println!("start");
 
     let mut stop = false;
 

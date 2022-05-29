@@ -20,8 +20,10 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
                         if posts.len() == BATCH_SIZE {
                             writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
                             n_post_sent = n_post_sent + BATCH_SIZE;
-                            logger.info(format!("n post sent: {}", n_post_sent));
                             posts.clear();
+                            if n_post_sent % 10000 == 0 {
+                                logger.info(format!("n post sent: {}", n_post_sent));
+                            }
                         }
                     } else {
                         logger.debug("bad post".to_string())

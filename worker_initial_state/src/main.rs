@@ -30,7 +30,7 @@ fn main() {
     }
     let logger = Logger::new(log_level);
     
-    println!("Hello, world!");
+    logger.info("start".to_string());
 
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
@@ -96,25 +96,24 @@ fn main() {
     
                                 exchange.publish(Publish::new(
                                     json!({
-                                        "post_id": post.id,
                                         "score": post.score,
                                     }).to_string().as_bytes(),
                                     QUEUE_POSTS_TO_AVG
                                 )).unwrap();
+
+                                exchange.publish(Publish::new(
+                                    json!({
+                                        "post_id": post.id,
+                                        "score": post.score,
+                                        "url": post.url,
+                                    }).to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_FILTER_SCORE
+                                )).unwrap();
                             }
-    
-                            logger.info(format!("n post received: {}", n_post_received))
                             
-                            /* 
-                            exchange.publish(Publish::new(
-                                json!({
-                                    "post_id": post.id,
-                                    "score": post.score,
-                                    "url": post.url,
-                                }).to_string().as_bytes(),
-                                QUEUE_POSTS_TO_FILTER_SCORE
-                            )).unwrap();
-                            */
+                            if n_post_received % 10000 == 0 {
+                                logger.info(format!("n post received: {}", n_post_received))
+                            }
                         }
                         OPCODE_COMMENT => {
                             /* 

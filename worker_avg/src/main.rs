@@ -98,13 +98,14 @@ fn main() {
                             logger.info(format!("error: {}", err))
                         }
                     }
-                    if score_count % 100 == 0 {
+                    if score_count % 10000 == 0 {
                         logger.info(format!("n processed: {}", score_count));
                     }
                     consumer.ack(delivery).unwrap();
                 }
                 _ => {
                     logger.info("stop consuming".to_string());
+                    break;
                 }
             }
         }

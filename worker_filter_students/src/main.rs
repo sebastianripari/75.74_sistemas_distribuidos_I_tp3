@@ -16,7 +16,7 @@ const STUDENTS_WORDS: [&'static str; 5] = [
 ];
 
 fn main() {
-    println!("worker filter student start");
+    println!("start");
 
     // wait rabbit
     thread::sleep(Duration::from_secs(30));

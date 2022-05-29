@@ -86,6 +86,8 @@ services:
     container_name: worker_filter_score
     image: worker_filter_score:latest
     entrypoint: /target/release/worker_filter_score
+    environment:
+      - LOG_LEVEL=info
     depends_on:
       - server
     networks:
