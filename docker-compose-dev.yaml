@@ -87,7 +87,7 @@ services:
     image: worker_filter_score:latest
     entrypoint: /target/release/worker_filter_score
     environment:
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
     depends_on:
       - server
     networks:
@@ -97,6 +97,8 @@ services:
     container_name: worker_join
     image: worker_join:latest
     entrypoint: /target/release/worker_join
+    environment:
+      - LOG_LEVEL=debug
     depends_on:
       - server
     networks:

@@ -1,11 +1,24 @@
 use std::{thread, time::Duration, env};
-use serde_json::{Value, json};
 use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
+use serde::{Deserialize};
+use serde_json::{json, Value};
 
 mod entities;
 mod utils;
 
 use crate::{entities::post::Post, utils::logger::Logger};
+
+#[derive(Deserialize, Debug)]
+struct MsgPost {
+    post_id: String,
+    score: i32,
+    url: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct MsgScoreAvg {
+    score_avg: i32
+}
 
 const LOG_LEVEL: &str = "debug";
 
@@ -70,13 +83,15 @@ fn main() {
 
                     if body == "end" {
                         break;
-                    } 
+                    }
 
-                    let value: Value = serde_json::from_str(&body).unwrap();
-                    logger.debug(format!("processing: {}", value));
-                    let post_id = value["post_id"].to_string();
-                    let score = value["score"].to_string().parse::<i32>().unwrap();
-                    let url = value["url"].to_string();
+                    let value: MsgPost = serde_json::from_str(&body).unwrap();
+                    if posts.len() % 10000 == 0 {
+                        logger.debug(format!("processing: {:?}", value));
+                    }
+                    let post_id = value.post_id.to_string();
+                    let score = value.score;
+                    let url = value.url;
 
                     let post = Post::new(post_id, score, url);
                     posts.push(post);
@@ -97,9 +112,9 @@ fn main() {
                         break;
                     }
 
-                    let value: Value = serde_json::from_str(&body).unwrap();
+                    let value: MsgScoreAvg = serde_json::from_str(&body).unwrap();
 
-                    score_avg = value["score_avg"].to_string().parse::<i32>().unwrap();
+                    score_avg = value.score_avg;
                     logger.info(format!("received score_avg: {}", score_avg));
 
                     consumer_score_avg.ack(delivery).unwrap();
@@ -110,15 +125,20 @@ fn main() {
         }
 
         logger.info("start filtering posts".to_string());
+        let mut n_post_published = 0;
         for post in posts {
             if post.score > score_avg {
                 exchange.publish(Publish::new(
                     json!({
-                        "post_id": post.id,
-                        "url": post.url
+                        "post_id": post.id.to_string(),
+                        "url": post.url.to_string()
                     }).to_string().as_bytes(),
                     QUEUE_POSTS_TO_JOIN
                 )).unwrap();
+                n_post_published = n_post_published + 1;
+                if n_post_published % 10000 == 0 {
+                    logger.debug(format!("publish post id: {}, url: {}", post.id, post.url));
+                }
             }
         }
         logger.info("finish filtering posts".to_string());

@@ -98,7 +98,7 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
-    thread::spawn(move || send_to_client(&mut rabbitmq_connection));
+    // thread::spawn(move || send_to_client(&mut rabbitmq_connection));
 
     for stream_result in listener.incoming() {
 
@@ -134,11 +134,9 @@ fn main() {
         }
     }
 
-    /*
     if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
+        logger.info("rabbitmq connection closed".to_string())
     }
-    */
 
     if let Ok(_) = cleaner.join() {
         logger.info("cleaner stop".to_string())
