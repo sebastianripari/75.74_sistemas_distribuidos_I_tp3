@@ -1,10 +1,8 @@
-use std::{env, thread, time::Duration, collections::HashMap};
-use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions,
-};
-use serde::{Deserialize};
+use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use serde::Deserialize;
+use std::{collections::HashMap, env, thread, time::Duration};
 
-use crate::{utils::logger::Logger};
+use crate::utils::logger::Logger;
 
 mod entities;
 mod utils;
@@ -31,10 +29,33 @@ fn main() {
 
     logger.info("start".to_string());
 
+    // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
+    let rabbitmq_user;
+    match env::var("RABBITMQ_USER") {
+        Ok(value) => rabbitmq_user = value,
+        Err(_) => {
+            panic!("could not get rabbitmq user from env")
+        }
+    }
+
+    let rabbitmq_password;
+    match env::var("RABBITMQ_PASSWORD") {
+        Ok(value) => rabbitmq_password = value,
+        Err(_) => {
+            panic!("could not get rabbitmq password user from env")
+        }
+    }
+
     let mut rabbitmq_connection;
-    match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
+    match Connection::insecure_open(
+        &format!(
+            "amqp://{}:{}@rabbitmq:5672",
+            rabbitmq_user, rabbitmq_password
+        )
+        .to_owned(),
+    ) {
         Ok(connection) => {
             logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
@@ -84,7 +105,7 @@ fn main() {
                 }
 
                 posts.insert(value.post_id, value.url);
-                
+
                 consumer_posts.ack(delivery).unwrap();
             }
             _ => logger.info("error consuming".to_string()),
@@ -122,7 +143,6 @@ fn main() {
             _ => logger.info("error consuming".to_string()),
         }
     }
-
 
     if let Ok(_) = rabbitmq_connection.close() {
         println!("rabbitmq connection closed")
