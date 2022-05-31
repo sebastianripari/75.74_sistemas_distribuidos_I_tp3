@@ -25,6 +25,56 @@ const OPCODE_COMMENT_END: u8 = 3;
 
 const LOG_LEVEL: &str = "debug";
 
+fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize, logger: Logger) {
+    let posts = Post::deserialize_multiple(payload);
+    let posts_clone = posts.clone();
+
+    *n_post_received = *n_post_received + posts.len();
+
+    let posts_1: Value;
+    let posts_2: Value;
+
+    posts_1 = posts
+        .into_iter()
+        .map(|post| {
+            json!({
+                "score": post.score
+            })
+        })
+        .rev()
+        .collect();
+
+    posts_2 = posts_clone
+        .into_iter()
+        .map(|post| {
+            json!({
+                "post_id": post.id,
+                "score": post.score,
+                "url": post.url,
+            })
+        })
+        .rev()
+        .collect();
+
+    exchange
+        .publish(Publish::new(
+            posts_1.to_string().as_bytes(),
+            QUEUE_POSTS_TO_AVG,
+        ))
+        .unwrap();
+
+    exchange
+        .publish(Publish::new(
+            posts_2.to_string().as_bytes(),
+            QUEUE_POSTS_TO_FILTER_SCORE,
+        ))
+        .unwrap();
+
+    if *n_post_received % 10000 == 0 {
+        logger.info(format!("n post received: {}", n_post_received))
+    }
+}
+
 fn main() {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
@@ -56,7 +106,7 @@ fn main() {
     let exchange = Exchange::direct(&channel);
 
     loop {
-        let mut n_post_received = 0;
+        let mut n_post_received: usize = 0;
         let mut posts_done = false;
         let mut comments_done = false;
 
@@ -95,53 +145,12 @@ fn main() {
                             logger.info("comments done".to_string());
                         }
                         OPCODE_POST => {
-                            let posts = Post::deserialize_multiple(payload.to_string());
-                            let posts_clone = posts.clone();
-
-                            n_post_received = n_post_received + posts.len();
-
-                            let posts_1: Value;
-                            let posts_2: Value;
-
-                            posts_1 = posts
-                                .into_iter()
-                                .map(|post| {
-                                    json!({
-                                        "score": post.score
-                                    })
-                                })
-                                .rev()
-                                .collect();
-
-                            posts_2 = posts_clone
-                                .into_iter()
-                                .map(|post| {
-                                    json!({
-                                        "post_id": post.id,
-                                        "score": post.score,
-                                        "url": post.url,
-                                    })
-                                })
-                                .rev()
-                                .collect();
-
-                            exchange
-                                .publish(Publish::new(
-                                    posts_1.to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_AVG,
-                                ))
-                                .unwrap();
-
-                            exchange
-                                .publish(Publish::new(
-                                    posts_2.to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_FILTER_SCORE,
-                                ))
-                                .unwrap();
-
-                            if n_post_received % 10000 == 0 {
-                                logger.info(format!("n post received: {}", n_post_received))
-                            }
+                            handle_post(
+                                payload.to_string(),
+                                &exchange,
+                                &mut n_post_received,
+                                logger.clone(),
+                            );
                         }
                         OPCODE_COMMENT => {
                             let comment = Comment::deserialize(payload.to_string());

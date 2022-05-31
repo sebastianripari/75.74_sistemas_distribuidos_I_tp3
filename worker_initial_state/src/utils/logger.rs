@@ -2,6 +2,7 @@ const LOG_LEVEL_NONE: &str = "none";
 const LOG_LEVEL_DEBUG: &str = "debug";
 const LOG_LEVEL_INFO: &str = "info";
 
+#[derive(Clone)]
 pub struct Logger {
     log_level: String
 }
