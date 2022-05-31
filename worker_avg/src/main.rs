@@ -1,6 +1,7 @@
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
@@ -90,19 +91,25 @@ fn main() {
                     continue;
                 }
 
-                let value: Value = serde_json::from_str(&body).unwrap();
-                logger.debug(format!("processing: {}", value));
-                let score = value["score"].to_string();
-                match score.parse::<i32>() {
-                    Ok(score) => {
-                        score_count = score_count + 1;
-                        score_sum = score_sum + score as u64;
+                let deserialized: Value = serde_json::from_str(&body).unwrap();
+                let array = deserialized.as_array().unwrap();
+
+                for value in array {
+                    logger.debug(format!("processing: {}", value));
+                    let score = value["score"].to_string();
+
+                    match score.parse::<i32>() {
+                        Ok(score) => {
+                            score_count = score_count + 1;
+                            score_sum = score_sum + score as u64;
+                        }
+                        Err(err) => logger.info(format!("error: {}", err)),
                     }
-                    Err(err) => logger.info(format!("error: {}", err)),
+                    if score_count % 10000 == 0 {
+                        logger.info(format!("n processed: {}", score_count));
+                    }
                 }
-                if score_count % 10000 == 0 {
-                    logger.info(format!("n processed: {}", score_count));
-                }
+                
                 consumer.ack(delivery).unwrap();
             }
             _ => {

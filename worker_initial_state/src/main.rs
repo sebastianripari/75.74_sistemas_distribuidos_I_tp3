@@ -1,12 +1,14 @@
-use std::{thread, time::Duration, env};
+use std::{env, thread, time::Duration};
 
-use amiquip::{ConsumerMessage, Connection, Exchange, ConsumerOptions, QueueDeclareOptions, Publish};
-use serde_json::json;
+use amiquip::{
+    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+};
+use serde_json::{json, Value};
 
-use crate::{utils::logger::{Logger}, entities::post::Post, entities::comment::Comment};
+use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Logger};
 
-mod utils;
 mod entities;
+mod utils;
 
 // queue input
 const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
@@ -29,7 +31,7 @@ fn main() {
         log_level = level;
     }
     let logger = Logger::new(log_level);
-    
+
     logger.info("start".to_string());
 
     // wait rabbit
@@ -47,7 +49,9 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue = channel.queue_declare(QUEUE_INITIAL_STATE, QueueDeclareOptions::default()).unwrap();
+    let queue = channel
+        .queue_declare(QUEUE_INITIAL_STATE, QueueDeclareOptions::default())
+        .unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     let exchange = Exchange::direct(&channel);
 
@@ -60,26 +64,30 @@ fn main() {
             match message {
                 ConsumerMessage::Delivery(delivery) => {
                     let body = String::from_utf8_lossy(&delivery.body);
-    
-                    let splited: Vec<&str>  = body.split('|').collect();
-    
+
+                    let splited: Vec<&str> = body.split('|').collect();
+
                     let opcode = splited[0].parse::<u8>().unwrap();
                     let payload = splited[1..].join("|");
-    
+
                     match opcode {
                         OPCODE_POST_END => {
                             posts_done = true;
-    
-                            exchange.publish(Publish::new(
-                                "end".to_string().as_bytes(),
-                                QUEUE_POSTS_TO_AVG
-                            )).unwrap();
-    
-                            exchange.publish(Publish::new(
-                                "end".to_string().as_bytes(),
-                                QUEUE_POSTS_TO_FILTER_SCORE
-                            )).unwrap();
-                                    
+
+                            exchange
+                                .publish(Publish::new(
+                                    "end".to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_AVG,
+                                ))
+                                .unwrap();
+
+                            exchange
+                                .publish(Publish::new(
+                                    "end".to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_FILTER_SCORE,
+                                ))
+                                .unwrap();
+
                             logger.info("posts done".to_string());
                         }
                         OPCODE_COMMENT_END => {
@@ -88,50 +96,73 @@ fn main() {
                         }
                         OPCODE_POST => {
                             let posts = Post::deserialize_multiple(payload.to_string());
-    
-                            n_post_received = n_post_received + posts.len();
-    
-                            for post in posts {
-                                logger.debug(format!("received post: id {}", post.id));
-    
-                                exchange.publish(Publish::new(
-                                    json!({
-                                        "score": post.score,
-                                    }).to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_AVG
-                                )).unwrap();
+                            let posts_clone = posts.clone();
 
-                                exchange.publish(Publish::new(
+                            n_post_received = n_post_received + posts.len();
+
+                            let posts_1: Value;
+                            let posts_2: Value;
+
+                            posts_1 = posts
+                                .into_iter()
+                                .map(|post| {
+                                    json!({
+                                        "score": post.score
+                                    })
+                                })
+                                .rev()
+                                .collect();
+
+                            posts_2 = posts_clone
+                                .into_iter()
+                                .map(|post| {
                                     json!({
                                         "post_id": post.id,
                                         "score": post.score,
                                         "url": post.url,
-                                    }).to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_FILTER_SCORE
-                                )).unwrap();
-                            }
-                            
+                                    })
+                                })
+                                .rev()
+                                .collect();
+
+                            exchange
+                                .publish(Publish::new(
+                                    posts_1.to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_AVG,
+                                ))
+                                .unwrap();
+
+                            exchange
+                                .publish(Publish::new(
+                                    posts_2.to_string().as_bytes(),
+                                    QUEUE_POSTS_TO_FILTER_SCORE,
+                                ))
+                                .unwrap();
+
                             if n_post_received % 10000 == 0 {
                                 logger.info(format!("n post received: {}", n_post_received))
                             }
                         }
                         OPCODE_COMMENT => {
                             let comment = Comment::deserialize(payload.to_string());
-    
-                            exchange.publish(Publish::new(
-                                json!({
-                                    "permalink": comment.permalink,
-                                    "body": comment.body
-                                }).to_string().as_bytes(),
-                                QUEUE_COMMENTS_TO_FILTER_STUDENTS
-                            )).unwrap();
-    
+
+                            exchange
+                                .publish(Publish::new(
+                                    json!({
+                                        "permalink": comment.permalink,
+                                        "body": comment.body
+                                    })
+                                    .to_string()
+                                    .as_bytes(),
+                                    QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                                ))
+                                .unwrap();
                         }
                         _ => {}
                     }
 
                     consumer.ack(delivery).unwrap();
-                    
+
                     if posts_done && comments_done {
                         break;
                     }
@@ -139,5 +170,5 @@ fn main() {
                 _ => {}
             }
         }
-    }    
+    }
 }

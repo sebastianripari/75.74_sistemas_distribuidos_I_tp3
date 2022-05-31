@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Post {
     pub id: String,
     subreddit_id: String,

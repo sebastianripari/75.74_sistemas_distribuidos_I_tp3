@@ -85,16 +85,18 @@ fn main() {
                         break;
                     }
 
-                    let value: MsgPost = serde_json::from_str(&body).unwrap();
-                    if posts.len() % 10000 == 0 {
-                        logger.debug(format!("processing: {:?}", value));
+                    let array: Vec<MsgPost> = serde_json::from_str(&body).unwrap();
+                    for value in array {
+                        if posts.len() % 10000 == 0 {
+                            logger.debug(format!("processing: {:?}", value));
+                        }
+                        let post_id = value.post_id.to_string();
+                        let score = value.score;
+                        let url = value.url;
+    
+                        let post = Post::new(post_id, score, url);
+                        posts.push(post);
                     }
-                    let post_id = value.post_id.to_string();
-                    let score = value.score;
-                    let url = value.url;
-
-                    let post = Post::new(post_id, score, url);
-                    posts.push(post);
                     
                     consumer_posts.ack(delivery).unwrap();
                 }
