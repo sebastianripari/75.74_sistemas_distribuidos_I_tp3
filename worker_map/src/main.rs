@@ -1,12 +1,14 @@
-use std::{thread, time::Duration};
-use serde_json::{Value, json};
+use amiquip::{
+    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+};
 use regex::Regex;
-use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions, Publish, Exchange};
-use serde::{Deserialize};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::{env, thread, time::Duration};
 
 #[derive(Deserialize, Debug)]
 struct Msg {
-    permalink: String
+    permalink: String,
 }
 
 // queue input
@@ -20,12 +22,33 @@ const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/
 fn main() {
     println!("start");
 
-    let mut stop = false;
-
+    // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
+    let rabbitmq_user;
+    match env::var("RABBITMQ_USER") {
+        Ok(value) => rabbitmq_user = value,
+        Err(_) => {
+            panic!("could not get rabbitmq user from env")
+        }
+    }
+
+    let rabbitmq_password;
+    match env::var("RABBITMQ_PASSWORD") {
+        Ok(value) => rabbitmq_password = value,
+        Err(_) => {
+            panic!("could not get rabbitmq password from env")
+        }
+    }
+
     let mut rabbitmq_connection;
-    match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
+    match Connection::insecure_open(
+        &format!(
+            "amqp://{}:{}@rabbitmq:5672",
+            rabbitmq_user, rabbitmq_password
+        )
+        .to_owned(),
+    ) {
         Ok(connection) => {
             println!("connected with rabbitmq");
             rabbitmq_connection = connection;
@@ -36,7 +59,9 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue = channel.queue_declare(QUEUE_COMMENTS_TO_MAP, QueueDeclareOptions::default()).unwrap();
+    let queue = channel
+        .queue_declare(QUEUE_COMMENTS_TO_MAP, QueueDeclareOptions::default())
+        .unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     let exchange = Exchange::direct(&channel);
 
@@ -55,15 +80,15 @@ fn main() {
 
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
                 let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
-                
+
                 println!("post id found {}", post_id);
 
-                exchange.publish(Publish::new(
-                    json!({
-                        "post_id": post_id
-                    }).to_string().as_bytes(),
-                    QUEUE_COMMENTS_TO_JOIN
-                )).unwrap();
+                exchange
+                    .publish(Publish::new(
+                        json!({ "post_id": post_id }).to_string().as_bytes(),
+                        QUEUE_COMMENTS_TO_JOIN,
+                    ))
+                    .unwrap();
 
                 consumer.ack(delivery).unwrap();
             }

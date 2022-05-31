@@ -142,7 +142,7 @@ fn main() {
     match env::var("RABBITMQ_PASSWORD") {
         Ok(value) => rabbitmq_password = value,
         Err(_) => {
-            panic!("could not get rabbitmq user from env")
+            panic!("could not get rabbitmq password from env")
         }
     }
 
