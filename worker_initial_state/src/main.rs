@@ -1,9 +1,9 @@
-use std::{env, thread, time::Duration};
+use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Logger};
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use serde_json::{json, Value};
-use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Logger};
+use std::{env, thread, time::Duration};
 
 mod entities;
 mod utils;
@@ -73,7 +73,12 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
     }
 }
 
-fn handle_comment(payload: String, exchange: &Exchange, n_comment_received: &mut usize, logger: Logger) {
+fn handle_comment(
+    payload: String,
+    exchange: &Exchange,
+    n_comment_received: &mut usize,
+    logger: Logger,
+) {
     let comment = Comment::deserialize(payload.to_string());
 
     *n_comment_received = *n_comment_received + 1;
@@ -124,12 +129,10 @@ fn main() {
     let logger = Logger::new(log_level);
 
     logger.info("start".to_string());
-    
+
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
-        Ok(value) => {
-            rabbitmq_user = value
-        }
+        Ok(value) => rabbitmq_user = value,
         Err(_) => {
             panic!("could not get rabbitmq user from env")
         }
@@ -137,9 +140,7 @@ fn main() {
 
     let rabbitmq_password;
     match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => {
-            rabbitmq_password = value
-        }
+        Ok(value) => rabbitmq_password = value,
         Err(_) => {
             panic!("could not get rabbitmq user from env")
         }
@@ -149,7 +150,13 @@ fn main() {
     thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
-    match Connection::insecure_open(&format!("amqp://{}:{}@rabbitmq:5672", rabbitmq_user, rabbitmq_password).to_owned()) {
+    match Connection::insecure_open(
+        &format!(
+            "amqp://{}:{}@rabbitmq:5672",
+            rabbitmq_user, rabbitmq_password
+        )
+        .to_owned(),
+    ) {
         Ok(connection) => {
             println!("connected with rabbitmq");
             rabbitmq_connection = connection;
@@ -185,18 +192,10 @@ fn main() {
 
                     match opcode {
                         OPCODE_POST_END => {
-                            handle_post_end(
-                                &exchange,
-                                &mut posts_done,
-                                logger.clone()
-                            );
+                            handle_post_end(&exchange, &mut posts_done, logger.clone());
                         }
                         OPCODE_COMMENT_END => {
-                            handle_comment_end(
-                                &exchange,
-                                &mut comments_done,
-                                logger.clone()
-                            );
+                            handle_comment_end(&exchange, &mut comments_done, logger.clone());
                         }
                         OPCODE_POST => {
                             handle_post(
@@ -206,17 +205,13 @@ fn main() {
                                 logger.clone(),
                             );
                         }
-                        OPCODE_COMMENT => {
-                            handle_comment(
-                                payload.to_string(),
-                                &exchange,
-                                &mut n_comment_received,
-                                logger.clone()
-                            )
-                        }
-                        _ => {
-                            logger.info("opcode invalid".to_string())
-                        }
+                        OPCODE_COMMENT => handle_comment(
+                            payload.to_string(),
+                            &exchange,
+                            &mut n_comment_received,
+                            logger.clone(),
+                        ),
+                        _ => logger.info("opcode invalid".to_string()),
                     }
 
                     consumer.ack(delivery).unwrap();
