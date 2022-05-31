@@ -24,6 +24,7 @@ services:
       - ./posts.csv:/posts.csv
       - ./posts_full.csv:/posts_full.csv
       - ./comments.csv:/comments.csv
+      - ./comments_full.csv:/comments_full.csv
     depends_on:
       - server
     networks:
