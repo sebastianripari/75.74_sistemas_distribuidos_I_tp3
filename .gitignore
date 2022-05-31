@@ -1,6 +1,6 @@
 bin/
 server/target
-client/target
+sender/target
 worker_initial_state/target
 worker_avg/target
 worker_map/target

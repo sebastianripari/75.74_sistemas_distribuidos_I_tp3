@@ -1,6 +1,12 @@
 use std::{thread, time::Duration};
-use serde_json::{Value, json};
+use serde_json::{json};
 use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
+use serde::{Deserialize};
+
+#[derive(Deserialize, Debug)]
+struct Msg {
+    permalink: String
+}
 
 // queue input
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
@@ -46,9 +52,9 @@ fn main() {
                     break;
                 }
 
-                let value: Value = serde_json::from_str(&body).unwrap();
-                println!("processing: {}", value);
-                let permalink = value["permalink"].to_string();
+                let value: Msg = serde_json::from_str(&body).unwrap();
+                println!("processing: {:?}", value);
+                let permalink = value.permalink;
     
                 for word in STUDENTS_WORDS {
                     if body.contains(word) {

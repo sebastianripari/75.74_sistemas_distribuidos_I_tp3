@@ -125,7 +125,6 @@ fn main() {
         }
 
         logger.info("start filtering posts".to_string());
-        let mut n_post_published = 0;
         for post in posts {
             if post.score > score_avg {
                 exchange.publish(Publish::new(
@@ -135,10 +134,6 @@ fn main() {
                     }).to_string().as_bytes(),
                     QUEUE_POSTS_TO_JOIN
                 )).unwrap();
-                n_post_published = n_post_published + 1;
-                if n_post_published % 10000 == 0 {
-                    logger.debug(format!("publish post id: {}, url: {}", post.id, post.url));
-                }
             }
         }
         logger.info("finish filtering posts".to_string());

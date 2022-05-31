@@ -1,4 +1,4 @@
-use std::{env, thread, time::Duration};
+use std::{env, thread, time::Duration, collections::HashMap};
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions,
 };
@@ -53,7 +53,15 @@ fn main() {
         .consume(ConsumerOptions::default())
         .unwrap();
 
-    let mut n_received = 0;
+    let queue_comments_to_join = channel
+        .queue_declare(QUEUE_POSTS_TO_JOIN, QueueDeclareOptions::default())
+        .unwrap();
+    let consumer_comments = queue_comments_to_join
+        .consume(ConsumerOptions::default())
+        .unwrap();
+
+    let mut n_posts_received = 0;
+    let mut posts = HashMap::new();
     for message in consumer_posts.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -62,21 +70,54 @@ fn main() {
                 if body == "stop" {
                     break;
                 }
-
                 if body == "end" {
                     consumer_posts.ack(delivery).unwrap();
                     break;
                 }
 
-                n_received = n_received + 1;
+                n_posts_received = n_posts_received + 1;
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
 
-                if n_received % 10000 == 0 {
+                if n_posts_received % 10000 == 0 {
                     println!("processing: post id {}", value.post_id);
                 }
 
+                posts.insert(value.post_id, value.url);
+                
                 consumer_posts.ack(delivery).unwrap();
+            }
+            _ => logger.info("error consuming".to_string()),
+        }
+    }
+
+    let mut n_comments_received = 0;
+    for message in consumer_posts.receiver().iter() {
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+                let body = String::from_utf8_lossy(&delivery.body);
+
+                if body == "stop" {
+                    break;
+                }
+                if body == "end" {
+                    consumer_posts.ack(delivery).unwrap();
+                    break;
+                }
+
+                n_comments_received = n_comments_received + 1;
+
+                let value: Msg = serde_json::from_str(&body).unwrap();
+
+                if n_comments_received % 10000 == 0 {
+                    println!("processing: comment id {}", value.post_id);
+                }
+
+                if let Some(post_url) = posts.get(&value.post_id) {
+                    println!("join ok, url: {}", post_url)
+                }
+
+                consumer_comments.ack(delivery).unwrap();
             }
             _ => logger.info("error consuming".to_string()),
         }

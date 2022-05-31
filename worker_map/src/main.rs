@@ -2,6 +2,12 @@ use std::{thread, time::Duration};
 use serde_json::{Value, json};
 use regex::Regex;
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions, Publish, Exchange};
+use serde::{Deserialize};
+
+#[derive(Deserialize, Debug)]
+struct Msg {
+    permalink: String
+}
 
 // queue input
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
@@ -43,9 +49,9 @@ fn main() {
                     break;
                 }
 
-                let value: Value = serde_json::from_str(&body).unwrap();
-                println!("processing: {}", value);
-                let permalink = value["permalink"].to_string();
+                let value: Msg = serde_json::from_str(&body).unwrap();
+                println!("processing: {:?}", value);
+                let permalink = value.permalink;
 
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
                 let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();

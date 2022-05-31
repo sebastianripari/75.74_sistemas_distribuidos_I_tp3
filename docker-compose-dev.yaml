@@ -7,19 +7,19 @@ services:
     environment:
       - SERVER_PORT=12350
       - LOG_LEVEL=info
-    entrypoint: /target/release/server
+    entrypoint: /tp2/target/release/server
     networks:
       - tp2_net
 
-  client:
-    container_name: client
-    image: client:latest
+  sender:
+    container_name: sender
+    image: sender:latest
     environment:
       - SERVER_PORT=12350
       - FILENAME_POSTS=posts_full.csv
-      - FILENAME_COMMENTS=comments.csv
+      - FILENAME_COMMENTS=comments_full.csv
       - LOG_LEVEL=info
-    entrypoint: /target/release/client
+    entrypoint: /target/release/sender
     volumes:
       - ./posts.csv:/posts.csv
       - ./posts_full.csv:/posts_full.csv
@@ -45,7 +45,7 @@ services:
   worker_initial_state:
     container_name: worker_initial_state
     image: worker_initial_state:latest
-    entrypoint: /target/release/worker_initial_state
+    entrypoint: /tp2/target/release/worker_initial_state
     environment:
       - LOG_LEVEL=info
     depends_on:
@@ -56,7 +56,7 @@ services:
   worker_avg:
     container_name: worker_avg
     image: worker_avg:latest
-    entrypoint: /target/release/worker_avg
+    entrypoint: /tp2/target/release/worker_avg
     environment:
       - LOG_LEVEL=info
     depends_on:
@@ -67,7 +67,7 @@ services:
   worker_map:
     container_name: worker_map
     image: worker_map:latest
-    entrypoint: /target/release/worker_map
+    entrypoint: /tp2/target/release/worker_map
     depends_on:
       - server
     networks:
@@ -76,7 +76,7 @@ services:
   worker_filter_students:
     container_name: worker_filter_students
     image: worker_filter_students:latest
-    entrypoint: /target/release/worker_filter_students
+    entrypoint: /tp2/target/release/worker_filter_students
     depends_on:
       - server
     networks:
@@ -85,7 +85,7 @@ services:
   worker_filter_score:
     container_name: worker_filter_score
     image: worker_filter_score:latest
-    entrypoint: /target/release/worker_filter_score
+    entrypoint: /tp2/target/release/worker_filter_score
     environment:
       - LOG_LEVEL=debug
     depends_on:
@@ -96,7 +96,7 @@ services:
   worker_join:
     container_name: worker_join
     image: worker_join:latest
-    entrypoint: /target/release/worker_join
+    entrypoint: /tp2/target/release/worker_join
     environment:
       - LOG_LEVEL=debug
     depends_on:

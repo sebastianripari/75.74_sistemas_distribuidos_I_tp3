@@ -20,8 +20,8 @@ impl Comment {
             subreddit_name: s[3].to_string(),
             subreddit_nsfw: s[4].to_string(),
             created_utc: s[5].to_string(),
-            permalink: s[6].to_string(),
-            body: s[7].to_string(),
+            permalink: s[6].to_string().replace('\n', " "),
+            body: s[7].to_string().replace('\n', " "),
             sentiment: s[8].to_string(),
             score: s[9].to_string()
         })

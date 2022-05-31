@@ -2,10 +2,9 @@ use std::{net::TcpListener, thread, time::Duration, sync::{mpsc::{channel, Recei
 
 use amiquip::{Connection, Exchange, Publish, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
 
-use crate::{utils::{socket::{SocketReader, SocketWriter}, logger::Logger}, entities::{comment::Comment}};
+use crate::{utils::{socket::{SocketReader, SocketWriter}, logger::Logger}};
 use serde_json::{json, Value};
 mod utils;
-mod entities;
 
 const PORT_DEFAULT: &str = "12345";
 const LOG_LEVEL: &str = "debug";

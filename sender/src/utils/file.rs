@@ -41,13 +41,17 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
 }
 
 pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger: &Logger) {
+    let mut n_comment_sent = 0;
     match OpenOptions::new().read(true).open(path) {
         Ok(file) => {
             let mut reader = csv::Reader::from_reader(file);
             for line_result in reader.records() {
                 if let Ok(line) = line_result {
                     if let Ok(comment) = Comment::from_file(line) {
-                        logger.debug(format!("about to send comment: {}", comment.id));
+                        n_comment_sent = n_comment_sent + 1;
+                        if n_comment_sent % 1000 == 0 {
+                            logger.info(format!("n comment sent: {}", n_comment_sent));
+                        }
                         writter.send(format!("{}|{}", OPCODE_COMMENT, comment.serialize()))
                     } else {
                         logger.debug("bad comment".to_string());

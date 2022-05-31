@@ -3,7 +3,7 @@ use std::{thread, time::Duration, env};
 use amiquip::{ConsumerMessage, Connection, Exchange, ConsumerOptions, QueueDeclareOptions, Publish};
 use serde_json::json;
 
-use crate::{utils::logger::{Logger}, entities::post::Post};
+use crate::{utils::logger::{Logger}, entities::post::Post, entities::comment::Comment};
 
 mod utils;
 mod entities;
@@ -116,7 +116,6 @@ fn main() {
                             }
                         }
                         OPCODE_COMMENT => {
-                            /* 
                             let comment = Comment::deserialize(payload.to_string());
     
                             exchange.publish(Publish::new(
@@ -126,11 +125,12 @@ fn main() {
                                 }).to_string().as_bytes(),
                                 QUEUE_COMMENTS_TO_FILTER_STUDENTS
                             )).unwrap();
-                            */
     
                         }
                         _ => {}
                     }
+
+                    consumer.ack(delivery).unwrap();
                     
                     if posts_done && comments_done {
                         break;
