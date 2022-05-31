@@ -7,6 +7,8 @@ services:
     environment:
       - SERVER_PORT=12350
       - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
     entrypoint: /tp2/target/release/server
     networks:
       - tp2_net
@@ -62,6 +64,8 @@ services:
     entrypoint: /tp2/target/release/worker_avg
     environment:
       - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
     depends_on:
       - server
     networks:
@@ -71,6 +75,9 @@ services:
     container_name: worker_map
     image: worker_map:latest
     entrypoint: /tp2/target/release/worker_map
+    environment:
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
     depends_on:
       - server
     networks:
@@ -80,6 +87,9 @@ services:
     container_name: worker_filter_students
     image: worker_filter_students:latest
     entrypoint: /tp2/target/release/worker_filter_students
+    environment:
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
     depends_on:
       - server
     networks:
