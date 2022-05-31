@@ -1,10 +1,8 @@
 use std::{env, thread, time::Duration};
-
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use serde_json::{json, Value};
-
 use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Logger};
 
 mod entities;
@@ -75,6 +73,49 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
     }
 }
 
+fn handle_comment(payload: String, exchange: &Exchange, n_comment_received: &mut usize, logger: Logger) {
+    let comment = Comment::deserialize(payload.to_string());
+
+    *n_comment_received = *n_comment_received + 1;
+
+    exchange
+        .publish(Publish::new(
+            json!({
+                "permalink": comment.permalink,
+                "body": comment.body
+            })
+            .to_string()
+            .as_bytes(),
+            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+        ))
+        .unwrap();
+}
+
+fn handle_comment_end(exchange: &Exchange, comments_done: &mut bool, logger: Logger) {
+    *comments_done = true;
+    logger.info("comments done".to_string());
+}
+
+fn handle_post_end(exchange: &Exchange, posts_done: &mut bool, logger: Logger) {
+    *posts_done = true;
+
+    exchange
+        .publish(Publish::new(
+            "end".to_string().as_bytes(),
+            QUEUE_POSTS_TO_AVG,
+        ))
+        .unwrap();
+
+    exchange
+        .publish(Publish::new(
+            "end".to_string().as_bytes(),
+            QUEUE_POSTS_TO_FILTER_SCORE,
+        ))
+        .unwrap();
+
+    logger.info("posts done".to_string());
+}
+
 fn main() {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
@@ -107,6 +148,8 @@ fn main() {
 
     loop {
         let mut n_post_received: usize = 0;
+        let mut n_comment_received: usize = 0;
+
         let mut posts_done = false;
         let mut comments_done = false;
 
@@ -122,27 +165,18 @@ fn main() {
 
                     match opcode {
                         OPCODE_POST_END => {
-                            posts_done = true;
-
-                            exchange
-                                .publish(Publish::new(
-                                    "end".to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_AVG,
-                                ))
-                                .unwrap();
-
-                            exchange
-                                .publish(Publish::new(
-                                    "end".to_string().as_bytes(),
-                                    QUEUE_POSTS_TO_FILTER_SCORE,
-                                ))
-                                .unwrap();
-
-                            logger.info("posts done".to_string());
+                            handle_post_end(
+                                &exchange,
+                                &mut posts_done,
+                                logger.clone()
+                            );
                         }
                         OPCODE_COMMENT_END => {
-                            comments_done = true;
-                            logger.info("comments done".to_string());
+                            handle_comment_end(
+                                &exchange,
+                                &mut comments_done,
+                                logger.clone()
+                            );
                         }
                         OPCODE_POST => {
                             handle_post(
@@ -153,21 +187,16 @@ fn main() {
                             );
                         }
                         OPCODE_COMMENT => {
-                            let comment = Comment::deserialize(payload.to_string());
-
-                            exchange
-                                .publish(Publish::new(
-                                    json!({
-                                        "permalink": comment.permalink,
-                                        "body": comment.body
-                                    })
-                                    .to_string()
-                                    .as_bytes(),
-                                    QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-                                ))
-                                .unwrap();
+                            handle_comment(
+                                payload.to_string(),
+                                &exchange,
+                                &mut n_comment_received,
+                                logger.clone()
+                            )
                         }
-                        _ => {}
+                        _ => {
+                            logger.info("opcode invalid".to_string())
+                        }
                     }
 
                     consumer.ack(delivery).unwrap();
