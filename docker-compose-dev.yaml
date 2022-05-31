@@ -101,6 +101,8 @@ services:
     entrypoint: /tp2/target/release/worker_filter_score
     environment:
       - LOG_LEVEL=debug
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
     depends_on:
       - server
     networks:

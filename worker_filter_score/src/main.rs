@@ -1,7 +1,9 @@
-use std::{thread, time::Duration, env};
-use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage, Publish, Exchange};
-use serde::{Deserialize};
+use amiquip::{
+    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+};
+use serde::Deserialize;
 use serde_json::{json, Value};
+use std::{env, thread, time::Duration};
 
 mod entities;
 mod utils;
@@ -17,7 +19,7 @@ struct MsgPost {
 
 #[derive(Deserialize, Debug)]
 struct MsgScoreAvg {
-    score_avg: i32
+    score_avg: i32,
 }
 
 const LOG_LEVEL: &str = "debug";
@@ -40,10 +42,33 @@ fn main() {
 
     let mut stop = false;
 
+    // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
+    let rabbitmq_user;
+    match env::var("RABBITMQ_USER") {
+        Ok(value) => rabbitmq_user = value,
+        Err(_) => {
+            panic!("could not get rabbitmq user from env")
+        }
+    }
+
+    let rabbitmq_password;
+    match env::var("RABBITMQ_PASSWORD") {
+        Ok(value) => rabbitmq_password = value,
+        Err(_) => {
+            panic!("could not get rabbitmq password user from env")
+        }
+    }
+
     let mut rabbitmq_connection;
-    match Connection::insecure_open("amqp://root:seba1234@rabbitmq:5672") {
+    match Connection::insecure_open(
+        &format!(
+            "amqp://{}:{}@rabbitmq:5672",
+            rabbitmq_user, rabbitmq_password
+        )
+        .to_owned(),
+    ) {
         Ok(connection) => {
             logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
@@ -56,12 +81,16 @@ fn main() {
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
 
-    let queue_posts = channel.queue_declare(QUEUE_POSTS_TO_FILTER_SCORE, QueueDeclareOptions::default()).unwrap();
-    let queue_score_avg = channel.queue_declare(AVG_TO_FILTER_SCORE, QueueDeclareOptions::default()).unwrap();
+    let queue_posts = channel
+        .queue_declare(QUEUE_POSTS_TO_FILTER_SCORE, QueueDeclareOptions::default())
+        .unwrap();
+    let queue_score_avg = channel
+        .queue_declare(AVG_TO_FILTER_SCORE, QueueDeclareOptions::default())
+        .unwrap();
 
     let consumer_posts = queue_posts.consume(ConsumerOptions::default()).unwrap();
     let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
-    
+
     loop {
         let mut posts = Vec::new();
 
@@ -93,11 +122,11 @@ fn main() {
                         let post_id = value.post_id.to_string();
                         let score = value.score;
                         let url = value.url;
-    
+
                         let post = Post::new(post_id, score, url);
                         posts.push(post);
                     }
-                    
+
                     consumer_posts.ack(delivery).unwrap();
                 }
                 _ => {}
@@ -129,13 +158,17 @@ fn main() {
         logger.info("start filtering posts".to_string());
         for post in posts {
             if post.score > score_avg {
-                exchange.publish(Publish::new(
-                    json!({
-                        "post_id": post.id.to_string(),
-                        "url": post.url.to_string()
-                    }).to_string().as_bytes(),
-                    QUEUE_POSTS_TO_JOIN
-                )).unwrap();
+                exchange
+                    .publish(Publish::new(
+                        json!({
+                            "post_id": post.id.to_string(),
+                            "url": post.url.to_string()
+                        })
+                        .to_string()
+                        .as_bytes(),
+                        QUEUE_POSTS_TO_JOIN,
+                    ))
+                    .unwrap();
             }
         }
         logger.info("finish filtering posts".to_string());
@@ -144,6 +177,6 @@ fn main() {
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())
     }
-    
+
     logger.info("shutdown".to_string());
 }
