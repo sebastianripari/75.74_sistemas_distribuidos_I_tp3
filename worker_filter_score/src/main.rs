@@ -2,7 +2,7 @@ use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use serde::Deserialize;
-use serde_json::{json};
+use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
 mod entities;
@@ -160,20 +160,26 @@ fn main() {
         }
 
         logger.info("start filtering posts".to_string());
-        for post in posts {
-            if post.score > score_avg {
-                exchange
-                    .publish(Publish::new(
-                        json!({
-                            "post_id": post.id.to_string(),
-                            "url": post.url.to_string()
-                        })
-                        .to_string()
-                        .as_bytes(),
-                        QUEUE_POSTS_TO_JOIN,
-                    ))
-                    .unwrap();
-            }
+        posts.retain(|post| post.score > score_avg);
+
+        for chunk in posts.chunks(100) {
+            let to_send: Value = chunk
+                .into_iter()
+                .map(|post| {
+                    json!({
+                        "post_id": post.id.to_string(),
+                        "url": post.url.to_string()
+                    })
+                })
+                .rev()
+                .collect();
+
+            exchange
+                .publish(Publish::new(
+                    to_send.to_string().as_bytes(),
+                    QUEUE_POSTS_TO_JOIN,
+                ))
+                .unwrap();
         }
         logger.info("finish filtering posts".to_string());
     }

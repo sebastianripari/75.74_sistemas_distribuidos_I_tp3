@@ -96,14 +96,16 @@ fn main() {
                     break;
                 }
 
-                let value: Msg = serde_json::from_str(&body).unwrap();
-                n_post_processed = n_post_processed + 1;
-                
-                if n_post_processed % 1000 == 0 {
-                    logger.info(format!("n post processed: {}", n_post_processed));
+                let array: Vec<Msg> = serde_json::from_str(&body).unwrap();
+                n_post_processed = n_post_processed + array.len();
+
+                for value in array {
+                    posts.insert(value.post_id, value.url);
                 }
 
-                posts.insert(value.post_id, value.url);
+                if n_post_processed % 10000 == 0 {
+                    logger.info(format!("n post processed: {}", n_post_processed));
+                }
 
                 consumer_posts.ack(delivery).unwrap();
             }
