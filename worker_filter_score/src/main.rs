@@ -179,7 +179,7 @@ fn main() {
     }
 
     if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
+        logger.info("rabbitmq connection closed".to_string());
     }
 
     logger.info("shutdown".to_string());

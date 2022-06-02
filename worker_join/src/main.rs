@@ -81,7 +81,7 @@ fn main() {
         .consume(ConsumerOptions::default())
         .unwrap();
 
-    let mut n_processed = 0;
+    let mut n_post_processed = 0;
     let mut posts = HashMap::new();
     for message in consumer_posts.receiver().iter() {
         match message {
@@ -97,10 +97,10 @@ fn main() {
                 }
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
-                n_processed = n_processed + 1;
+                n_post_processed = n_post_processed + 1;
                 
-                if n_processed % 1000 == 0 {
-                    logger.info(format!("n processed: {}", n_processed));
+                if n_post_processed % 1000 == 0 {
+                    logger.info(format!("n post processed: {}", n_post_processed));
                 }
 
                 posts.insert(value.post_id, value.url);
@@ -111,7 +111,7 @@ fn main() {
         }
     }
 
-    let mut n_comments_received = 0;
+    let mut n_comments_processed = 0;
     for message in consumer_posts.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -125,16 +125,16 @@ fn main() {
                     break;
                 }
 
-                n_comments_received = n_comments_received + 1;
+                n_comments_processed = n_comments_processed + 1;
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
 
-                if n_comments_received % 100000 == 0 {
-                    println!("processing: comment id {}", value.post_id);
+                if n_comments_processed % 1000 == 0 {
+                    logger.info(format!("n comments processed: {}", n_post_processed));
                 }
 
                 if let Some(post_url) = posts.get(&value.post_id) {
-                    println!("join ok, url: {}", post_url)
+                    logger.info(format!("join ok, url: {}", post_url))
                 }
 
                 consumer_comments.ack(delivery).unwrap();
