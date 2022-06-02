@@ -4,7 +4,8 @@ use crate::{entities::{comment::Comment, post::Post}, OPCODE_POST, OPCODE_POST_E
 
 use super::{socket::SocketWriter, logger::Logger};
 
-const BATCH_SIZE: usize = 100;
+const BATCH_POSTS_SIZE: usize = 100;
+const BATCH_COMMENTS_SIZE: usize = 100;
 
 pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &Logger) {
     let mut posts = Vec::new();
@@ -17,11 +18,11 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
                     if let Ok(post) = Post::from_file(line) {
                         logger.debug(format!("about to send post: {}", post.id));
                         posts.push(post.serialize());
-                        if posts.len() == BATCH_SIZE {
+                        if posts.len() == BATCH_POSTS_SIZE {
                             writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
-                            n_post_sent = n_post_sent + BATCH_SIZE;
+                            n_post_sent = n_post_sent + BATCH_POSTS_SIZE;
                             posts.clear();
-                            if n_post_sent % 10000 == 0 {
+                            if n_post_sent % 100000 == 0 {
                                 logger.info(format!("n post sent: {}", n_post_sent));
                             }
                         }
@@ -41,6 +42,7 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
 }
 
 pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger: &Logger) {
+    let mut comments = Vec::new();
     let mut n_comment_sent = 0;
     match OpenOptions::new().read(true).open(path) {
         Ok(file) => {
@@ -48,11 +50,16 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
             for line_result in reader.records() {
                 if let Ok(line) = line_result {
                     if let Ok(comment) = Comment::from_file(line) {
-                        n_comment_sent = n_comment_sent + 1;
-                        if n_comment_sent % 1000 == 0 {
-                            logger.info(format!("n comment sent: {}", n_comment_sent));
+                        logger.debug(format!("about to send comment: {}", comment.id));
+                        comments.push(comment.serialize());
+                        if comments.len() == BATCH_COMMENTS_SIZE {
+                            writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join("")));
+                            n_comment_sent = n_comment_sent + BATCH_COMMENTS_SIZE;
+                            comments.clear();
+                            if n_comment_sent % 100000 == 0 {
+                                logger.info(format!("n comment sent: {}", n_comment_sent));
+                            }
                         }
-                        writter.send(format!("{}|{}", OPCODE_COMMENT, comment.serialize()))
                     } else {
                         logger.debug("bad comment".to_string());
                     }
@@ -63,5 +70,7 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
             logger.info("could not open file".to_string());
         }
     }
+    writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join("")));
+    logger.info("all sent".to_string());
     writter.send(format!("{}|", OPCODE_COMMENT_END));
 }

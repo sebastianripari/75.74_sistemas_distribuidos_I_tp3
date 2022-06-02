@@ -3,13 +3,19 @@ use amiquip::{
 };
 use regex::Regex;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{json};
 use std::{env, thread, time::Duration};
+
+use crate::utils::logger::Logger;
+
+mod utils;
 
 #[derive(Deserialize, Debug)]
 struct Msg {
     permalink: String,
 }
+
+const LOG_LEVEL: &str = "debug";
 
 // queue input
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
@@ -20,7 +26,13 @@ const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
 fn main() {
-    println!("start");
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
+
+    logger.info("start".to_string());
 
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
@@ -50,7 +62,7 @@ fn main() {
         .to_owned(),
     ) {
         Ok(connection) => {
-            println!("connected with rabbitmq");
+            logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
         Err(_) => {
@@ -75,20 +87,20 @@ fn main() {
                 }
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
-                println!("processing: {:?}", value);
+                logger.info(format!("processing: {:?}", value));
                 let permalink = value.permalink;
-
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
-                let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
 
-                println!("post id found {}", post_id);
-
-                exchange
-                    .publish(Publish::new(
-                        json!({ "post_id": post_id }).to_string().as_bytes(),
-                        QUEUE_COMMENTS_TO_JOIN,
-                    ))
-                    .unwrap();
+                if let Some(captures) = regex.captures(&permalink) {
+                    let post_id = captures.get(1).unwrap().as_str();
+                    logger.info(format!("post id found {}", post_id));
+                    exchange
+                        .publish(Publish::new(
+                            json!({ "post_id": post_id }).to_string().as_bytes(),
+                            QUEUE_COMMENTS_TO_JOIN,
+                        ))
+                        .unwrap();
+                }
 
                 consumer.ack(delivery).unwrap();
             }
@@ -97,8 +109,8 @@ fn main() {
     }
 
     if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
+        logger.info("rabbitmq connection closed".to_string())
     }
 
-    println!("worker map shutdown");
+    logger.info("worker map shutdown".to_string());
 }

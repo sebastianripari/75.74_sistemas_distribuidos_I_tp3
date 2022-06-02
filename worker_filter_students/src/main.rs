@@ -5,9 +5,16 @@ use serde::Deserialize;
 use serde_json::json;
 use std::{env, thread, time::Duration};
 
+use crate::utils::logger::Logger;
+
+mod utils;
+
+const LOG_LEVEL: &str = "debug";
+
 #[derive(Deserialize, Debug)]
-struct Msg {
+struct MsgComment {
     permalink: String,
+    body: String
 }
 
 // queue input
@@ -19,7 +26,13 @@ const STUDENTS_WORDS: [&'static str; 5] =
     ["university", "college", "student", "teacher", "professor"];
 
 fn main() {
-    println!("start");
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
+
+    logger.info("start".to_string());
 
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
@@ -49,7 +62,7 @@ fn main() {
         .to_owned(),
     ) {
         Ok(connection) => {
-            println!("connected with rabbitmq");
+            logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
         Err(_) => {
@@ -67,6 +80,7 @@ fn main() {
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     let exchange = Exchange::direct(&channel);
 
+    let mut n_processed = 0;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -76,20 +90,28 @@ fn main() {
                     break;
                 }
 
-                let value: Msg = serde_json::from_str(&body).unwrap();
-                println!("processing: {:?}", value);
-                let permalink = value.permalink;
+                let array: Vec<MsgComment> = serde_json::from_str(&body).unwrap();
+                n_processed = n_processed + array.len();
 
-                for word in STUDENTS_WORDS {
-                    if body.contains(word) {
-                        exchange
-                            .publish(Publish::new(
-                                json!({ "permalink": permalink }).to_string().as_bytes(),
-                                QUEUE_COMMENTS_TO_MAP,
-                            ))
-                            .unwrap();
-                        break;
+                for value in array {
+                    logger.debug(format!("processing: {:?}", value));
+                    let permalink = value.permalink;
+                    for word in STUDENTS_WORDS {
+                        if value.body.contains(word) {
+                            logger.debug("match student".to_string());
+                            exchange
+                                .publish(Publish::new(
+                                    json!({ "permalink": permalink }).to_string().as_bytes(),
+                                    QUEUE_COMMENTS_TO_MAP,
+                                ))
+                                .unwrap();
+                            break;
+                        }
                     }
+                }
+                
+                if n_processed % 100000 == 0 {
+                    logger.info(format!("n processed: {}", n_processed))
                 }
 
                 consumer.ack(delivery).unwrap();
@@ -99,8 +121,8 @@ fn main() {
     }
 
     if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
+        logger.info("rabbitmq connection closed".to_string())
     }
 
-    println!("worker filter shutdown");
+    logger.info("shutdown".to_string());
 }

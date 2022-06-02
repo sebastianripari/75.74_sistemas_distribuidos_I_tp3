@@ -2,7 +2,7 @@ use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{json};
 use std::{env, thread, time::Duration};
 
 mod entities;
@@ -91,6 +91,7 @@ fn main() {
     let consumer_posts = queue_posts.consume(ConsumerOptions::default()).unwrap();
     let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
 
+    let mut n_processed = 0;
     loop {
         let mut posts = Vec::new();
 
@@ -115,16 +116,19 @@ fn main() {
                     }
 
                     let array: Vec<MsgPost> = serde_json::from_str(&body).unwrap();
+                    n_processed = n_processed + array.len();
+
                     for value in array {
-                        if posts.len() % 10000 == 0 {
-                            logger.debug(format!("processing: {:?}", value));
-                        }
                         let post_id = value.post_id.to_string();
                         let score = value.score;
                         let url = value.url;
 
                         let post = Post::new(post_id, score, url);
                         posts.push(post);
+                    }
+
+                    if posts.len() % 100000 == 0 {
+                        logger.info(format!("processing: {}", n_processed));
                     }
 
                     consumer_posts.ack(delivery).unwrap();

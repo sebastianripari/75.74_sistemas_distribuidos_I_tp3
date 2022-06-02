@@ -100,7 +100,7 @@ fn main() {
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
 
-                if n_posts_received % 10000 == 0 {
+                if n_posts_received % 100000 == 0 {
                     println!("processing: post id {}", value.post_id);
                 }
 
@@ -130,7 +130,7 @@ fn main() {
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
 
-                if n_comments_received % 10000 == 0 {
+                if n_comments_received % 100000 == 0 {
                     println!("processing: comment id {}", value.post_id);
                 }
 

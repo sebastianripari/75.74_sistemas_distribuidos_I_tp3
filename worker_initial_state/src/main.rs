@@ -29,10 +29,10 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 
     *n_post_received = *n_post_received + posts.len();
 
-    let posts_1: Value;
-    let posts_2: Value;
+    let scores: Value;
+    let posts_: Value;
 
-    posts_1 = posts
+    scores = posts
         .into_iter()
         .map(|post| {
             json!({
@@ -42,7 +42,7 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
         .rev()
         .collect();
 
-    posts_2 = posts_clone
+    posts_ = posts_clone
         .into_iter()
         .map(|post| {
             json!({
@@ -54,21 +54,21 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
         .rev()
         .collect();
 
-    exchange
-        .publish(Publish::new(
-            posts_1.to_string().as_bytes(),
-            QUEUE_POSTS_TO_AVG,
-        ))
-        .unwrap();
+    if let Err(err) = exchange.publish(Publish::new(
+        scores.to_string().as_bytes(),
+        QUEUE_POSTS_TO_AVG,
+    )) {
+        logger.info(format!("could not publish: {:?}", err))
+    }
 
-    exchange
-        .publish(Publish::new(
-            posts_2.to_string().as_bytes(),
-            QUEUE_POSTS_TO_FILTER_SCORE,
-        ))
-        .unwrap();
+    if let Err(err) = exchange.publish(Publish::new(
+        posts_.to_string().as_bytes(),
+        QUEUE_POSTS_TO_FILTER_SCORE,
+    )) {
+        logger.info(format!("could not publish: {:?}", err))
+    }
 
-    if *n_post_received % 10000 == 0 {
+    if *n_post_received % 100000 == 0 {
         logger.info(format!("n post received: {}", n_post_received))
     }
 }
@@ -79,21 +79,33 @@ fn handle_comment(
     n_comment_received: &mut usize,
     logger: Logger,
 ) {
-    let comment = Comment::deserialize(payload.to_string());
+    let comments = Comment::deserialize_multiple(payload);
 
-    *n_comment_received = *n_comment_received + 1;
+    *n_comment_received = *n_comment_received + comments.len();
 
-    exchange
-        .publish(Publish::new(
+    let comments_: Value;
+
+    comments_ = comments
+        .into_iter()
+        .map(|comment| {
             json!({
                 "permalink": comment.permalink,
                 "body": comment.body
             })
-            .to_string()
-            .as_bytes(),
-            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-        ))
-        .unwrap();
+        })
+        .rev()
+        .collect();
+
+    if let Err(err) = exchange.publish(Publish::new(
+        comments_.to_string().as_bytes(),
+        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+    )) {
+        logger.info(format!("could not publish: {:?}", err))
+    }
+
+    if *n_comment_received % 100000 == 0 {
+        logger.info(format!("n comment received: {}", n_comment_received))
+    }
 }
 
 fn handle_comment_end(exchange: &Exchange, comments_done: &mut bool, logger: Logger) {
@@ -167,11 +179,12 @@ fn main() {
     }
 
     let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let exchange = Exchange::direct(&channel);
+
     let queue = channel
         .queue_declare(QUEUE_INITIAL_STATE, QueueDeclareOptions::default())
         .unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
-    let exchange = Exchange::direct(&channel);
 
     loop {
         let mut n_post_received: usize = 0;
@@ -205,12 +218,14 @@ fn main() {
                                 logger.clone(),
                             );
                         }
-                        OPCODE_COMMENT => handle_comment(
-                            payload.to_string(),
-                            &exchange,
-                            &mut n_comment_received,
-                            logger.clone(),
-                        ),
+                        OPCODE_COMMENT => {
+                            handle_comment(
+                                payload.to_string(),
+                                &exchange,
+                                &mut n_comment_received,
+                                logger.clone(),
+                            );
+                        }
                         _ => logger.info("opcode invalid".to_string()),
                     }
 

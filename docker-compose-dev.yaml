@@ -78,6 +78,7 @@ services:
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - LOG_LEVEL=info
     depends_on:
       - server
     networks:
@@ -90,6 +91,7 @@ services:
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - LOG_LEVEL=info
     depends_on:
       - server
     networks:
@@ -100,7 +102,7 @@ services:
     image: worker_filter_score:latest
     entrypoint: /tp2/target/release/worker_filter_score
     environment:
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
     depends_on:

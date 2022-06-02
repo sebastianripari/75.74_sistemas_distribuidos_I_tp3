@@ -11,6 +11,16 @@ pub struct Comment {
 }
 
 impl Comment {
+    pub fn deserialize_multiple(s: String) -> Vec<Comment> {
+        let mut v = Vec::new();
+        let mut comments: Vec<&str> = s.split("_c_e_d_").collect();
+        comments.pop();
+        for comment_str in comments {
+            v.push(Comment::deserialize(comment_str.to_string()))
+        }
+        v
+    }
+
     pub fn deserialize(s: String) -> Comment {
         let splited: Vec<&str> = s.split("_c_f_d_").collect();
 

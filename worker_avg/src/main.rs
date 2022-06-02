@@ -73,6 +73,8 @@ fn main() {
     let mut score_count: u64 = 0;
     let mut score_sum: u64 = 0;
 
+    let mut n_processed: usize = 0;
+
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -116,6 +118,8 @@ fn main() {
                 let deserialized: Value = serde_json::from_str(&body).unwrap();
                 let array = deserialized.as_array().unwrap();
 
+                n_processed = n_processed + array.len();
+
                 for value in array {
                     logger.debug(format!("processing: {}", value));
                     let score = value["score"].to_string();
@@ -127,9 +131,10 @@ fn main() {
                         }
                         Err(err) => logger.info(format!("error: {}", err)),
                     }
-                    if score_count % 10000 == 0 {
-                        logger.info(format!("n processed: {}", score_count));
-                    }
+                }
+
+                if n_processed % 100000 == 0 {
+                    logger.info(format!("n processed: {}", score_count));
                 }
 
                 consumer.ack(delivery).unwrap();
