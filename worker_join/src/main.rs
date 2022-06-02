@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde_json::{Error};
 use std::{collections::HashMap, env, thread, time::Duration};
 
-use crate::utils::logger::Logger;
+use crate::{utils::logger::Logger, entities::post::Post};
 
 mod entities;
 mod utils;
@@ -123,6 +123,7 @@ fn main() {
     }
 
     let mut n_comments_processed = 0;
+    let mut n_joins = 0;
     for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -132,6 +133,7 @@ fn main() {
                     break;
                 }
                 if body == "end" {
+
                     consumer_posts.ack(delivery).unwrap();
                     break;
                 }
@@ -145,8 +147,11 @@ fn main() {
                     }
     
                     if let Some(post_url) = posts.get(&value.post_id) {
-                        logger.info(format!("join ok, url: {}", post_url))
+                        logger.info(format!("join ok, url: {}", post_url));
+                        n_joins = n_joins + 1;
+                        logger.info(format!("n joins: {}", n_joins));
                     }
+                    posts.remove(&value.post_id);
                 }
 
                 consumer_comments.ack(delivery).unwrap();
