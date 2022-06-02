@@ -77,6 +77,7 @@ fn main() {
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
     let exchange = Exchange::direct(&channel);
 
+    let mut n_processed = 0;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -87,19 +88,24 @@ fn main() {
                 }
 
                 let value: Msg = serde_json::from_str(&body).unwrap();
-                logger.info(format!("processing: {:?}", value));
+                n_processed = n_processed + 1;
+                logger.debug(format!("processing: {:?}", value));
                 let permalink = value.permalink;
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
                 if let Some(captures) = regex.captures(&permalink) {
                     let post_id = captures.get(1).unwrap().as_str();
-                    logger.info(format!("post id found {}", post_id));
+                    logger.debug(format!("post id found {}", post_id));
                     exchange
                         .publish(Publish::new(
                             json!({ "post_id": post_id }).to_string().as_bytes(),
                             QUEUE_COMMENTS_TO_JOIN,
                         ))
                         .unwrap();
+                }
+
+                if n_processed % 1000 == 0 {
+                    logger.info(format!("n processed: {}", n_processed));
                 }
 
                 consumer.ack(delivery).unwrap();
