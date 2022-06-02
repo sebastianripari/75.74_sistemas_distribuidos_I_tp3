@@ -81,7 +81,7 @@ fn main() {
         .consume(ConsumerOptions::default())
         .unwrap();
 
-    let mut n_posts_received = 0;
+    let mut n_processed = 0;
     let mut posts = HashMap::new();
     for message in consumer_posts.receiver().iter() {
         match message {
@@ -96,12 +96,11 @@ fn main() {
                     break;
                 }
 
-                n_posts_received = n_posts_received + 1;
-
                 let value: Msg = serde_json::from_str(&body).unwrap();
-
-                if n_posts_received % 100000 == 0 {
-                    println!("processing: post id {}", value.post_id);
+                n_processed = n_processed + 1;
+                
+                if n_processed % 1000 == 0 {
+                    logger.info(format!("n processed: {}", n_processed));
                 }
 
                 posts.insert(value.post_id, value.url);
