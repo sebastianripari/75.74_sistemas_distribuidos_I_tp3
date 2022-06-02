@@ -55,6 +55,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - N_REPLICAS_WORKER_FILTER_STUDENTS=2
     depends_on:
       - server
     networks:

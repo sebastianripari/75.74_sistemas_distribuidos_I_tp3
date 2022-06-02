@@ -96,30 +96,36 @@ fn handle_comment(
         .rev()
         .collect();
 
-    if let Err(err) = exchange.publish(Publish::new(
-        comments_.to_string().as_bytes(),
-        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-    )) {
-        logger.info(format!("could not publish: {:?}", err))
-    }
+    exchange
+        .publish(Publish::new(
+            comments_.to_string().as_bytes(),
+            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+        ))
+        .unwrap();
 
     if *n_comment_received % 100000 == 0 {
         logger.info(format!("n comment received: {}", n_comment_received))
     }
 }
 
-fn handle_comment_end(exchange: &Exchange, comments_done: &mut bool, logger: Logger) {
-    *comments_done = true;
+fn handle_comment_end(exchange: &Exchange, logger: Logger) {
     logger.info("comments done".to_string());
-    exchange.publish(Publish::new(
-        "end".to_string().as_bytes(),
-        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-    )).unwrap()
+
+    let mut n_replicas_worker_filter_students = 1;
+    if let Ok(value) = env::var("N_REPLICAS_WORKER_FILTER_STUDENTS") {
+        n_replicas_worker_filter_students = value.parse::<usize>().unwrap();
+    }
+    for _ in 0..n_replicas_worker_filter_students {
+        exchange
+            .publish(Publish::new(
+                "end".to_string().as_bytes(),
+                QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+            ))
+            .unwrap()
+    }
 }
 
-fn handle_post_end(exchange: &Exchange, posts_done: &mut bool, logger: Logger) {
-    *posts_done = true;
-
+fn handle_post_end(exchange: &Exchange, logger: Logger) {
     exchange
         .publish(Publish::new(
             "end".to_string().as_bytes(),
@@ -190,57 +196,58 @@ fn main() {
         .unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
 
-    loop {
-        let mut n_post_received: usize = 0;
-        let mut n_comment_received: usize = 0;
+    let mut n_post_received: usize = 0;
+    let mut n_comment_received: usize = 0;
 
-        let mut posts_done = false;
-        let mut comments_done = false;
+    let mut posts_end = false;
+    let mut comments_end = false;
 
-        for message in consumer.receiver().iter() {
-            match message {
-                ConsumerMessage::Delivery(delivery) => {
-                    let body = String::from_utf8_lossy(&delivery.body);
+    for message in consumer.receiver().iter() {
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+                let body = String::from_utf8_lossy(&delivery.body);
 
-                    let splited: Vec<&str> = body.split('|').collect();
+                let splited: Vec<&str> = body.split('|').collect();
 
-                    let opcode = splited[0].parse::<u8>().unwrap();
-                    let payload = splited[1..].join("|");
+                let opcode = splited[0].parse::<u8>().unwrap();
+                let payload = splited[1..].join("|");
 
-                    match opcode {
-                        OPCODE_POST_END => {
-                            handle_post_end(&exchange, &mut posts_done, logger.clone());
-                        }
-                        OPCODE_COMMENT_END => {
-                            handle_comment_end(&exchange, &mut comments_done, logger.clone());
-                        }
-                        OPCODE_POST => {
-                            handle_post(
-                                payload.to_string(),
-                                &exchange,
-                                &mut n_post_received,
-                                logger.clone(),
-                            );
-                        }
-                        OPCODE_COMMENT => {
-                            handle_comment(
-                                payload.to_string(),
-                                &exchange,
-                                &mut n_comment_received,
-                                logger.clone(),
-                            );
-                        }
-                        _ => logger.info("opcode invalid".to_string()),
+                match opcode {
+                    OPCODE_POST_END => {
+                        handle_post_end(&exchange, logger.clone());
+                        posts_end = true;
                     }
-
-                    consumer.ack(delivery).unwrap();
-
-                    if posts_done && comments_done {
-                        break;
+                    OPCODE_COMMENT_END => {
+                        handle_comment_end(&exchange, logger.clone());
+                        comments_end = true;
                     }
+                    OPCODE_POST => {
+                        handle_post(
+                            payload.to_string(),
+                            &exchange,
+                            &mut n_post_received,
+                            logger.clone(),
+                        );
+                    }
+                    OPCODE_COMMENT => {
+                        handle_comment(
+                            payload.to_string(),
+                            &exchange,
+                            &mut n_comment_received,
+                            logger.clone(),
+                        );
+                    }
+                    _ => logger.info("opcode invalid".to_string()),
                 }
-                _ => {}
+
+                consumer.ack(delivery).unwrap();
+
+                if posts_end && comments_end {
+                    logger.info("doing end".to_string());
+                    break;
+                }
             }
+            _ => {}
         }
     }
 }

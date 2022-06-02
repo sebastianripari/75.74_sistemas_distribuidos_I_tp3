@@ -107,12 +107,11 @@ fn main() {
                         ))
                         .unwrap();
 
-                    consumer.ack(delivery).unwrap();
-
                     score_count = 0;
                     score_sum = 0;
 
-                    continue;
+                    consumer.ack(delivery).unwrap();
+                    break;
                 }
 
                 let deserialized: Value = serde_json::from_str(&body).unwrap();

@@ -92,105 +92,99 @@ fn main() {
     let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
 
     let mut n_processed = 0;
-    loop {
-        let mut posts = Vec::new();
 
-        if stop {
-            break;
-        }
+    let mut posts = Vec::new();
+    let mut score_avg = 0;
 
-        let mut score_avg = 0;
+    for message in consumer_posts.receiver().iter() {
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+                let body = String::from_utf8_lossy(&delivery.body);
 
-        for message in consumer_posts.receiver().iter() {
-            match message {
-                ConsumerMessage::Delivery(delivery) => {
-                    let body = String::from_utf8_lossy(&delivery.body);
-
-                    if body == "stop" {
-                        stop = true;
-                        consumer_posts.ack(delivery).unwrap();
-                        break;
-                    }
-
-                    if body == "end" {
-                        consumer_posts.ack(delivery).unwrap();
-                        break;
-                    }
-
-                    let array: Vec<MsgPost> = serde_json::from_str(&body).unwrap();
-                    n_processed = n_processed + array.len();
-
-                    for value in array {
-                        let post_id = value.post_id.to_string();
-                        let score = value.score;
-                        let url = value.url;
-
-                        let post = Post::new(post_id, score, url);
-                        posts.push(post);
-                    }
-
-                    if posts.len() % 100000 == 0 {
-                        logger.info(format!("processing: {}", n_processed));
-                    }
-
+                if body == "stop" {
+                    stop = true;
                     consumer_posts.ack(delivery).unwrap();
-                }
-                _ => {}
-            }
-        }
-
-        for message in consumer_score_avg.receiver().iter() {
-            match message {
-                ConsumerMessage::Delivery(delivery) => {
-                    let body = String::from_utf8_lossy(&delivery.body);
-
-                    if body == "stop" {
-                        stop = true;
-                        break;
-                    }
-
-                    let value: MsgScoreAvg = serde_json::from_str(&body).unwrap();
-
-                    score_avg = value.score_avg;
-                    logger.info(format!("received score_avg: {}", score_avg));
-
-                    consumer_score_avg.ack(delivery).unwrap();
                     break;
                 }
-                _ => {}
+
+                if body == "end" {
+                    consumer_posts.ack(delivery).unwrap();
+                    break;
+                }
+
+                let array: Vec<MsgPost> = serde_json::from_str(&body).unwrap();
+                n_processed = n_processed + array.len();
+
+                for value in array {
+                    let post_id = value.post_id.to_string();
+                    let score = value.score;
+                    let url = value.url;
+
+                    let post = Post::new(post_id, score, url);
+                    posts.push(post);
+                }
+
+                if posts.len() % 100000 == 0 {
+                    logger.info(format!("processing: {}", n_processed));
+                }
+
+                consumer_posts.ack(delivery).unwrap();
             }
+            _ => {}
         }
-
-        logger.info("start filtering posts".to_string());
-        posts.retain(|post| post.score > score_avg);
-
-        for chunk in posts.chunks(100) {
-            let to_send: Value = chunk
-                .into_iter()
-                .map(|post| {
-                    json!({
-                        "post_id": post.id.to_string(),
-                        "url": post.url.to_string()
-                    })
-                })
-                .rev()
-                .collect();
-
-            exchange
-                .publish(Publish::new(
-                    to_send.to_string().as_bytes(),
-                    QUEUE_POSTS_TO_JOIN,
-                ))
-                .unwrap();
-        }
-        exchange
-                .publish(Publish::new(
-                    "end".to_string().as_bytes(),
-                    QUEUE_POSTS_TO_JOIN,
-                ))
-                .unwrap();
-        logger.info("finish filtering posts".to_string());
     }
+
+    for message in consumer_score_avg.receiver().iter() {
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+                let body = String::from_utf8_lossy(&delivery.body);
+
+                if body == "stop" {
+                    stop = true;
+                    break;
+                }
+
+                let value: MsgScoreAvg = serde_json::from_str(&body).unwrap();
+
+                score_avg = value.score_avg;
+                logger.info(format!("received score_avg: {}", score_avg));
+
+                consumer_score_avg.ack(delivery).unwrap();
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    logger.info("start filtering posts".to_string());
+    posts.retain(|post| post.score > score_avg);
+
+    for chunk in posts.chunks(100) {
+        let to_send: Value = chunk
+            .into_iter()
+            .map(|post| {
+                json!({
+                    "post_id": post.id.to_string(),
+                    "url": post.url.to_string()
+                })
+            })
+            .rev()
+            .collect();
+
+        exchange
+            .publish(Publish::new(
+                to_send.to_string().as_bytes(),
+                QUEUE_POSTS_TO_JOIN,
+            ))
+            .unwrap();
+    }
+    exchange
+        .publish(Publish::new(
+            "end".to_string().as_bytes(),
+            QUEUE_POSTS_TO_JOIN,
+        ))
+        .unwrap();
+    logger.info("finish filtering posts".to_string());
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string());
