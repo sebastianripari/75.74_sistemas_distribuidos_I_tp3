@@ -109,7 +109,9 @@ fn main() {
                 n_post_processed = n_post_processed + array.len();
 
                 for value in array {
-                    posts.insert(value.post_id, value.url);
+                    if value.url != "" {
+                        posts.insert(value.post_id, value.url);
+                    }
                 }
 
                 if n_post_processed % 10000 == 0 {
@@ -133,7 +135,8 @@ fn main() {
                     break;
                 }
                 if body == "end" {
-
+                    logger.info("doing end".to_string());
+                    logger.info(format!("n joins: {}", n_joins));
                     consumer_posts.ack(delivery).unwrap();
                     break;
                 }
@@ -147,9 +150,11 @@ fn main() {
                     }
     
                     if let Some(post_url) = posts.get(&value.post_id) {
-                        logger.info(format!("join ok, url: {}", post_url));
+                        logger.debug(format!("join ok, id: {}, url: {}", value.post_id, post_url));
                         n_joins = n_joins + 1;
-                        logger.info(format!("n joins: {}", n_joins));
+                        if n_joins % 100 == 0 {
+                            logger.info(format!("n joins: {}", n_joins));
+                        }
                     }
                     posts.remove(&value.post_id);
                 }

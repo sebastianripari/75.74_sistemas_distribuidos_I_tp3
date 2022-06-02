@@ -109,7 +109,7 @@ fn main() {
                     logger.debug(format!("processing: {:?}", value));
                     let permalink = value.permalink;
                     for word in STUDENTS_WORDS {
-                        if value.body.contains(word) {
+                        if value.body.to_ascii_lowercase().contains(word) {
                             logger.debug("match student".to_string());
                             exchange
                                 .publish(Publish::new(
