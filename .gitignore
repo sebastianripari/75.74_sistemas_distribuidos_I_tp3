@@ -9,3 +9,4 @@ worker_filter_score/target
 worker_join/target
 posts_full.csv
 comments_full.csv
+.ipynb_checkpoints/notebook-checkpoint.ipynb
