@@ -14,7 +14,7 @@ const LOG_LEVEL: &str = "debug";
 #[derive(Deserialize, Debug)]
 struct MsgComment {
     permalink: String,
-    body: String
+    body: String,
 }
 
 // queue input
@@ -90,6 +90,18 @@ fn main() {
                     break;
                 }
 
+                if body == "end" {
+                    logger.info("doing end".to_string());
+                    exchange
+                        .publish(Publish::new(
+                            "end".to_string().as_bytes(),
+                            QUEUE_COMMENTS_TO_MAP,
+                        ))
+                        .unwrap();
+                    consumer.ack(delivery).unwrap();
+                    break;
+                }
+
                 let array: Vec<MsgComment> = serde_json::from_str(&body).unwrap();
                 n_processed = n_processed + array.len();
 
@@ -109,7 +121,7 @@ fn main() {
                         }
                     }
                 }
-                
+
                 if n_processed % 100000 == 0 {
                     logger.info(format!("n processed: {}", n_processed))
                 }

@@ -111,6 +111,10 @@ fn handle_comment(
 fn handle_comment_end(exchange: &Exchange, comments_done: &mut bool, logger: Logger) {
     *comments_done = true;
     logger.info("comments done".to_string());
+    exchange.publish(Publish::new(
+        "end".to_string().as_bytes(),
+        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+    )).unwrap()
 }
 
 fn handle_post_end(exchange: &Exchange, posts_done: &mut bool, logger: Logger) {

@@ -1,5 +1,6 @@
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use serde::Deserialize;
+use serde_json::{Error};
 use std::{collections::HashMap, env, thread, time::Duration};
 
 use crate::utils::logger::Logger;
@@ -13,10 +14,16 @@ struct Msg {
     url: String,
 }
 
+#[derive(Deserialize, Debug)]
+struct MsgComment {
+    post_id: String
+}
+
 const LOG_LEVEL: &str = "debug";
 
 // queue input
 const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
+const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 // queue output
 
@@ -75,7 +82,7 @@ fn main() {
         .unwrap();
 
     let queue_comments_to_join = channel
-        .queue_declare(QUEUE_POSTS_TO_JOIN, QueueDeclareOptions::default())
+        .queue_declare(QUEUE_COMMENTS_TO_JOIN, QueueDeclareOptions::default())
         .unwrap();
     let consumer_comments = queue_comments_to_join
         .consume(ConsumerOptions::default())
@@ -91,7 +98,9 @@ fn main() {
                 if body == "stop" {
                     break;
                 }
+
                 if body == "end" {
+                    logger.info("doing end posts".to_string());
                     consumer_posts.ack(delivery).unwrap();
                     break;
                 }
@@ -114,7 +123,7 @@ fn main() {
     }
 
     let mut n_comments_processed = 0;
-    for message in consumer_posts.receiver().iter() {
+    for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
@@ -129,14 +138,15 @@ fn main() {
 
                 n_comments_processed = n_comments_processed + 1;
 
-                let value: Msg = serde_json::from_str(&body).unwrap();
-
-                if n_comments_processed % 1000 == 0 {
-                    logger.info(format!("n comments processed: {}", n_post_processed));
-                }
-
-                if let Some(post_url) = posts.get(&value.post_id) {
-                    logger.info(format!("join ok, url: {}", post_url))
+                let value_result: Result<MsgComment, Error> = serde_json::from_str(&body);
+                if let Ok(value) = value_result {
+                    if n_comments_processed % 1000 == 0 {
+                        logger.info(format!("n comments processed: {}", n_comments_processed));
+                    }
+    
+                    if let Some(post_url) = posts.get(&value.post_id) {
+                        logger.info(format!("join ok, url: {}", post_url))
+                    }
                 }
 
                 consumer_comments.ack(delivery).unwrap();

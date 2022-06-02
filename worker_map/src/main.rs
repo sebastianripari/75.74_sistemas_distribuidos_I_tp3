@@ -3,7 +3,7 @@ use amiquip::{
 };
 use regex::Regex;
 use serde::Deserialize;
-use serde_json::{json};
+use serde_json::json;
 use std::{env, thread, time::Duration};
 
 use crate::utils::logger::Logger;
@@ -84,6 +84,18 @@ fn main() {
                 let body = String::from_utf8_lossy(&delivery.body);
 
                 if body == "stop" {
+                    break;
+                }
+
+                if body == "end" {
+                    logger.info("doing end".to_string());
+                    exchange
+                        .publish(Publish::new(
+                            "end".to_string().as_bytes(),
+                            QUEUE_COMMENTS_TO_JOIN,
+                        ))
+                        .unwrap();
+                    consumer.ack(delivery).unwrap();
                     break;
                 }
 

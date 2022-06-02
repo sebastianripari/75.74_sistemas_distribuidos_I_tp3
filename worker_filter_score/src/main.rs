@@ -108,10 +108,12 @@ fn main() {
 
                     if body == "stop" {
                         stop = true;
+                        consumer_posts.ack(delivery).unwrap();
                         break;
                     }
 
                     if body == "end" {
+                        consumer_posts.ack(delivery).unwrap();
                         break;
                     }
 
@@ -181,6 +183,12 @@ fn main() {
                 ))
                 .unwrap();
         }
+        exchange
+                .publish(Publish::new(
+                    "end".to_string().as_bytes(),
+                    QUEUE_POSTS_TO_JOIN,
+                ))
+                .unwrap();
         logger.info("finish filtering posts".to_string());
     }
 
