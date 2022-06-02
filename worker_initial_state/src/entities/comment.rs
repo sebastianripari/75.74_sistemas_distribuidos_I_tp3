@@ -6,7 +6,7 @@ pub struct Comment {
     created_utc: String,
     pub permalink: String,
     pub body: String,
-    pub sentiment: String,
+    pub sentiment: f32,
     pub score: String
 }
 
@@ -24,6 +24,11 @@ impl Comment {
     pub fn deserialize(s: String) -> Comment {
         let splited: Vec<&str> = s.split("_c_f_d_").collect();
 
+        let mut sentiment = 0.0;
+        if let Ok(value) = splited[7].to_string().parse::<f32>() {
+            sentiment = value;
+        }
+
         Comment {
             id: splited[0].to_string(),
             subreddit_id: splited[1].to_string(),
@@ -32,7 +37,7 @@ impl Comment {
             created_utc: splited[4].to_string(),
             permalink: splited[5].to_string(),
             body: splited[6].to_string(),
-            sentiment: splited[7].to_string(),
+            sentiment: sentiment,
             score: splited[8].to_string()
         }
     }

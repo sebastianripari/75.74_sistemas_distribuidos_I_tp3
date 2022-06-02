@@ -3,7 +3,7 @@ use amiquip::{
 };
 use regex::Regex;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
 use crate::utils::logger::Logger;
@@ -13,6 +13,8 @@ mod utils;
 #[derive(Deserialize, Debug)]
 struct Msg {
     permalink: String,
+    body: String,
+    sentiment: f32,
 }
 
 const LOG_LEVEL: &str = "debug";
@@ -21,7 +23,7 @@ const LOG_LEVEL: &str = "debug";
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
 // queue output
-const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
+const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
@@ -92,31 +94,47 @@ fn main() {
                     exchange
                         .publish(Publish::new(
                             "end".to_string().as_bytes(),
-                            QUEUE_COMMENTS_TO_JOIN,
+                            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
                         ))
                         .unwrap();
                     consumer.ack(delivery).unwrap();
                     break;
                 }
 
-                let value: Msg = serde_json::from_str(&body).unwrap();
-                n_processed = n_processed + 1;
-                logger.debug(format!("processing: {:?}", value));
-                let permalink = value.permalink;
+                let array: Vec<Msg> = serde_json::from_str(&body).unwrap();
+                n_processed = n_processed + array.len();
+
                 let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
-                if let Some(captures) = regex.captures(&permalink) {
-                    let post_id = captures.get(1).unwrap().as_str();
-                    logger.debug(format!("post id found {}", post_id));
-                    exchange
-                        .publish(Publish::new(
-                            json!({ "post_id": post_id }).to_string().as_bytes(),
-                            QUEUE_COMMENTS_TO_JOIN,
-                        ))
-                        .unwrap();
-                }
+                let array_mapped: Value = array
+                    .into_iter()
+                    .map(|comment| {
+                        let permalink = comment.permalink;
 
-                if n_processed % 1000 == 0 {
+                        if let Some(captures) = regex.captures(&permalink) {
+                            let post_id = captures.get(1).unwrap().as_str();
+                            json!({
+                                "post_id": post_id,
+                                "body": comment.body,
+                            })
+                        } else {
+                            json!({
+                                "post_id": "",
+                                "body": comment.body,
+                            })
+                        }
+                    })
+                    .rev()
+                    .collect();
+
+                exchange
+                    .publish(Publish::new(
+                        array_mapped.to_string().as_bytes(),
+                        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                    ))
+                    .unwrap();
+
+                if n_processed % 100000 == 0 {
                     logger.info(format!("n processed: {}", n_processed));
                 }
 

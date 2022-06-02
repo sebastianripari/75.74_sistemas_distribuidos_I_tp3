@@ -15,6 +15,7 @@ const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
 const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
+const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
@@ -90,7 +91,8 @@ fn handle_comment(
         .map(|comment| {
             json!({
                 "permalink": comment.permalink,
-                "body": comment.body
+                "body": comment.body,
+                "sentiment": comment.sentiment
             })
         })
         .rev()
@@ -99,7 +101,7 @@ fn handle_comment(
     exchange
         .publish(Publish::new(
             comments_.to_string().as_bytes(),
-            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+            QUEUE_COMMENTS_TO_MAP,
         ))
         .unwrap();
 

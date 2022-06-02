@@ -13,14 +13,14 @@ const LOG_LEVEL: &str = "debug";
 
 #[derive(Deserialize, Debug)]
 struct MsgComment {
-    permalink: String,
+    post_id: String,
     body: String,
 }
 
 // queue input
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 // queue output
-const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
+const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 const STUDENTS_WORDS: [&'static str; 5] =
     ["university", "college", "student", "teacher", "professor"];
@@ -95,7 +95,7 @@ fn main() {
                     exchange
                         .publish(Publish::new(
                             "end".to_string().as_bytes(),
-                            QUEUE_COMMENTS_TO_MAP,
+                            QUEUE_COMMENTS_TO_JOIN,
                         ))
                         .unwrap();
                     consumer.ack(delivery).unwrap();
@@ -107,14 +107,13 @@ fn main() {
 
                 for value in array {
                     logger.debug(format!("processing: {:?}", value));
-                    let permalink = value.permalink;
                     for word in STUDENTS_WORDS {
                         if value.body.to_ascii_lowercase().contains(word) {
                             logger.debug("match student".to_string());
                             exchange
                                 .publish(Publish::new(
-                                    json!({ "permalink": permalink }).to_string().as_bytes(),
-                                    QUEUE_COMMENTS_TO_MAP,
+                                    json!({ "post_id": value.post_id }).to_string().as_bytes(),
+                                    QUEUE_COMMENTS_TO_JOIN,
                                 ))
                                 .unwrap();
                             break;
