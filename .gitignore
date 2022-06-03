@@ -11,3 +11,4 @@ worker_group_by/target
 posts_full.csv
 comments_full.csv
 .ipynb_checkpoints/notebook-checkpoint.ipynb
+.DS_Store
