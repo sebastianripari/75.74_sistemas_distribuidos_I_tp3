@@ -22,6 +22,7 @@ fn main() {
     let logger = Logger::new(log_level);
 
     logger.info("start".to_string());
+    
 
     let mut port = PORT_DEFAULT;
     let mut filename_posts = FILENAME_POSTS_DEFAULT.to_string();

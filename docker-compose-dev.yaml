@@ -13,15 +13,15 @@ services:
     networks:
       - tp2_net
 
-  sender:
-    container_name: sender
-    image: sender:latest
+  client:
+    container_name: client
+    image: client:latest
     environment:
       - SERVER_PORT=12350
       - FILENAME_POSTS=posts_full.csv
       - FILENAME_COMMENTS=comments_full.csv
       - LOG_LEVEL=info
-    entrypoint: /target/release/sender
+    entrypoint: /tp2/target/release/client
     volumes:
       - ./posts.csv:/posts.csv
       - ./posts_full.csv:/posts_full.csv

@@ -12,6 +12,7 @@ fn main() {
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
+    
     let logger = Logger::new(log_level);
 
     logger.info("start".to_string());
