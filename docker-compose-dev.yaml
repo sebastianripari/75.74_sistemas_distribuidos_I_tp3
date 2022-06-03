@@ -23,10 +23,10 @@ services:
       - LOG_LEVEL=info
     entrypoint: /tp2/target/release/client
     volumes:
-      - ./posts.csv:/posts.csv
-      - ./posts_full.csv:/posts_full.csv
-      - ./comments.csv:/comments.csv
-      - ./comments_full.csv:/comments_full.csv
+      - ./posts.csv:/tp2/posts.csv
+      - ./posts_full.csv:/tp2/posts_full.csv
+      - ./comments.csv:/tp2/comments.csv
+      - ./comments_full.csv:/tp2/comments_full.csv
     depends_on:
       - server
     networks:
