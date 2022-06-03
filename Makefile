@@ -16,6 +16,7 @@ build: deps
 .PHONY: build
 
 docker-image:
+	docker build -f ./worker_group_by/Dockerfile -t "worker_group_by:latest" .
 	docker build -f ./server/Dockerfile -t "server:latest" .
 	docker build -f ./worker_initial_state/Dockerfile -t "worker_initial_state:latest" .
 	docker build -f ./worker_avg/Dockerfile -t "worker_avg:latest" .

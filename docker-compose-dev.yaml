@@ -55,7 +55,6 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_REPLICAS_WORKER_FILTER_STUDENTS=2
     depends_on:
       - server
     networks:
@@ -119,6 +118,19 @@ services:
     container_name: worker_join
     image: worker_join:latest
     entrypoint: /tp2/target/release/worker_join
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+
+  worker_group_by:
+    container_name: worker_group_by
+    image: worker_group_by:latest
+    entrypoint: /tp2/target/release/worker_group_by
     environment:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root

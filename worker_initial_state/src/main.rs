@@ -112,19 +112,12 @@ fn handle_comment(
 
 fn handle_comment_end(exchange: &Exchange, logger: Logger) {
     logger.info("comments done".to_string());
-
-    let mut n_replicas_worker_filter_students = 1;
-    if let Ok(value) = env::var("N_REPLICAS_WORKER_FILTER_STUDENTS") {
-        n_replicas_worker_filter_students = value.parse::<usize>().unwrap();
-    }
-    for _ in 0..n_replicas_worker_filter_students {
-        exchange
-            .publish(Publish::new(
-                "end".to_string().as_bytes(),
-                QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-            ))
-            .unwrap()
-    }
+    exchange
+        .publish(Publish::new(
+            "end".to_string().as_bytes(),
+            QUEUE_COMMENTS_TO_MAP,
+        ))
+        .unwrap()
 }
 
 fn handle_post_end(exchange: &Exchange, logger: Logger) {
