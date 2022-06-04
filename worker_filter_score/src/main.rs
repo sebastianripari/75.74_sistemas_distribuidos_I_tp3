@@ -1,36 +1,28 @@
-use crate::{entities::post::Post, utils::logger::Logger};
+use crate::{utils::logger::Logger};
 use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+    Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
 };
-use messages::{message_posts::MessagePosts, message_score_avg::MessageScoreAvg};
-use serde_json::{json, Value};
+use handlers::handle_posts::handle_posts;
+use handlers::handle_score_avg::handle_score_avg;
+use messages::{message_posts::MessagePosts, message_score_avg::MessageScoreAvg, opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}};
 use std::{env, thread, time::Duration};
 
 mod entities;
 mod messages;
 mod utils;
+mod handlers;
 
 const LOG_LEVEL: &str = "debug";
+const LOG_RATE: usize = 100000;
 
 // queue input
 const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
 const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 
 // queue output
-const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
+pub const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
 
-fn main() {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
-    logger.info("start".to_string());
-
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
+fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
         Ok(value) => rabbitmq_user = value,
@@ -47,7 +39,7 @@ fn main() {
         }
     }
 
-    let mut rabbitmq_connection;
+    let rabbitmq_connection;
     match Connection::insecure_open(
         &format!(
             "amqp://{}:{}@rabbitmq:5672",
@@ -64,6 +56,30 @@ fn main() {
         }
     }
 
+    rabbitmq_connection
+}
+
+
+fn logger_start() -> Logger {
+    let mut log_level = LOG_LEVEL.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+
+    let logger = Logger::new(log_level);
+
+    logger
+}
+
+fn main() {
+    let logger = logger_start();
+
+    logger.info("start".to_string());
+
+    // wait rabbit
+    thread::sleep(Duration::from_secs(30));
+
+    let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
 
@@ -77,9 +93,10 @@ fn main() {
     let consumer_posts = queue_posts.consume(ConsumerOptions::default()).unwrap();
     let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
 
+    let mut end = false;
+
     let mut n_processed = 0;
     let mut posts = Vec::new();
-    let mut score_avg = 0;
 
     for message in consumer_posts.receiver().iter() {
         match message {
@@ -89,36 +106,32 @@ fn main() {
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
-                if opcode == 0 {
-                    consumer_posts.ack(delivery).unwrap();
-                    break;
-                }
-
-                if opcode == 1 {
-                    if let Some(payload) = payload {
-                        n_processed = n_processed + payload.len();
-
-                        for post in payload {
-                            let post_id = post.post_id;
-                            let score = post.score;
-                            let url = post.url;
-
-                            let post = Post::new(post_id, score, url);
-                            posts.push(post);
-                        }
-
-                        if posts.len() % 100000 == 0 {
-                            logger.info(format!("processing: {}", n_processed));
-                        }
+                match opcode {
+                    MESSAGE_OPCODE_END => {
+                        end = true;
                     }
+                    MESSAGE_OPCODE_NORMAL => {
+                        handle_posts(
+                            payload.unwrap(),
+                            &mut n_processed,
+                            &logger,
+                            &mut posts
+                        );
+                    }
+                    _ => {}
                 }
 
                 consumer_posts.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
             }
             _ => {}
         }
     }
 
+    end = false;
     for message in consumer_score_avg.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -128,52 +141,28 @@ fn main() {
                 let payload = msg.payload;
 
                 match opcode {
-                    1 => {
-                        if let Some(payload) = payload {
-                            score_avg = payload;
-                            logger.info(format!("received score_avg: {}", score_avg));
-                            consumer_score_avg.ack(delivery).unwrap();
-                            break;
-                        }
+                    MESSAGE_OPCODE_NORMAL => {
+                        handle_score_avg(
+                            payload.unwrap(),
+                            &logger,
+                            &mut posts,
+                            &exchange
+                        );
+                        end = true;
                     }
                     _ => {
-                        consumer_score_avg.ack(delivery).unwrap();
                     }
+                }
+
+                consumer_score_avg.ack(delivery).unwrap();
+
+                if end {
+                    break;
                 }
             }
             _ => {}
         }
     }
-
-    logger.info("start filtering posts".to_string());
-    posts.retain(|post| post.score > score_avg);
-
-    for chunk in posts.chunks(100) {
-        let to_send: Value = chunk
-            .into_iter()
-            .map(|post| {
-                json!({
-                    "post_id": post.id.to_string(),
-                    "url": post.url.to_string()
-                })
-            })
-            .rev()
-            .collect();
-
-        exchange
-            .publish(Publish::new(
-                to_send.to_string().as_bytes(),
-                QUEUE_POSTS_TO_JOIN,
-            ))
-            .unwrap();
-    }
-    exchange
-        .publish(Publish::new(
-            "end".to_string().as_bytes(),
-            QUEUE_POSTS_TO_JOIN,
-        ))
-        .unwrap();
-    logger.info("finish filtering posts".to_string());
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string());
