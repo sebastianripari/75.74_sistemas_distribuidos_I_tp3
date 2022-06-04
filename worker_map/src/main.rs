@@ -1,22 +1,16 @@
+use crate::utils::logger::Logger;
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+use messages::message_comments::{MessageComments};
 use regex::Regex;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
-use crate::utils::logger::Logger;
-
+mod messages;
 mod utils;
 
-#[derive(Deserialize, Debug)]
-struct Msg {
-    permalink: String,
-    body: String,
-    sentiment: f32,
-}
-
+const LOG_RATE: usize = 100000;
 const LOG_LEVEL: &str = "debug";
 
 // queue input
@@ -80,61 +74,69 @@ fn main() {
     let exchange = Exchange::direct(&channel);
 
     let mut n_processed = 0;
+    let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
+
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessageComments = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if body == "end" {
-                    logger.info("doing end".to_string());
-                    exchange
-                        .publish(Publish::new(
-                            "end".to_string().as_bytes(),
-                            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-                        ))
-                        .unwrap();
-                    consumer.ack(delivery).unwrap();
-                    break;
-                }
+                match opcode {
+                    0 => {
+                        logger.info("doing end".to_string());
+                        exchange
+                            .publish(Publish::new(
+                                "end".to_string().as_bytes(),
+                                QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                            ))
+                            .unwrap();
+                        consumer.ack(delivery).unwrap();
+                        break;
+                    }
+                    1 => {
+                        if let Some(payload) = payload {
+                            n_processed = n_processed + payload.len();
 
-                let array: Vec<Msg> = serde_json::from_str(&body).unwrap();
-                n_processed = n_processed + array.len();
+                            let array_mapped: Value = payload
+                                .into_iter()
+                                .map(|comment| {
+                                    let permalink = comment.permalink;
 
-                let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
+                                    if let Some(captures) = regex.captures(&permalink) {
+                                        let post_id = captures.get(1).unwrap().as_str();
+                                        json!({
+                                            "post_id": post_id,
+                                            "body": comment.body,
+                                        })
+                                    } else {
+                                        json!({
+                                            "post_id": "",
+                                            "body": comment.body,
+                                        })
+                                    }
+                                })
+                                .rev()
+                                .collect();
 
-                let array_mapped: Value = array
-                    .into_iter()
-                    .map(|comment| {
-                        let permalink = comment.permalink;
-
-                        if let Some(captures) = regex.captures(&permalink) {
-                            let post_id = captures.get(1).unwrap().as_str();
-                            json!({
-                                "post_id": post_id,
-                                "body": comment.body,
-                            })
-                        } else {
-                            json!({
-                                "post_id": "",
-                                "body": comment.body,
-                            })
+                            exchange
+                                .publish(Publish::new(
+                                    array_mapped.to_string().as_bytes(),
+                                    QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                                ))
+                                .unwrap();
                         }
-                    })
-                    .rev()
-                    .collect();
-
-                exchange
-                    .publish(Publish::new(
-                        array_mapped.to_string().as_bytes(),
-                        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-                    ))
-                    .unwrap();
-
-                if n_processed % 100000 == 0 {
-                    logger.info(format!("n processed: {}", n_processed));
+                        if n_processed % LOG_RATE == 0 {
+                            logger.info(format!("n processed: {}", n_processed));
+                        }
+                        consumer.ack(delivery).unwrap();
+                    }
+                    _ => {
+                        consumer.ack(delivery).unwrap();
+                    }
                 }
-
-                consumer.ack(delivery).unwrap();
             }
             _ => {}
         }

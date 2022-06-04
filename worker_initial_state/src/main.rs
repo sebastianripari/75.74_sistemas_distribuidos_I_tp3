@@ -2,7 +2,10 @@ use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Log
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use messages::{message_post::{MessagePosts, PostData}, message_scores::MessageScores};
+use messages::{
+    message_posts::{MessagePosts, PostData},
+    message_scores::MessageScores, message_comments::{CommentData, MessageCommentss},
+};
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
@@ -25,17 +28,14 @@ const OPCODE_COMMENT: u8 = 2;
 const OPCODE_COMMENT_END: u8 = 3;
 
 const LOG_LEVEL: &str = "debug";
+const LOG_RATE: usize = 100000;
 
-fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize, logger: Logger) {
-    let posts = Post::deserialize_multiple(payload);
-
-    *n_post_received = *n_post_received + posts.len();
-
+fn publish_scores(exchange: &Exchange, posts: &Vec<Post>) {
     let payload_scores = posts.iter().map(|post| post.score).rev().collect();
 
     let msg_scores = MessageScores {
         opcode: 1,
-        payload: Some(payload_scores)
+        payload: Some(payload_scores),
     };
 
     exchange
@@ -44,7 +44,9 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
             QUEUE_POSTS_TO_AVG,
         ))
         .unwrap();
+}
 
+fn publish_posts(exchange: &Exchange, posts: &Vec<Post>) {
     let payload_posts: Vec<PostData> = posts
         .iter()
         .map(|post| PostData {
@@ -66,10 +68,44 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
             QUEUE_POSTS_TO_FILTER_SCORE,
         ))
         .unwrap();
+}
 
-    if *n_post_received % 100000 == 0 {
+fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize, logger: Logger) {
+    let posts = Post::deserialize_multiple(payload);
+
+    publish_scores(&exchange, &posts);
+    publish_posts(&exchange, &posts);
+
+    *n_post_received = *n_post_received + posts.len();
+
+    if *n_post_received % LOG_RATE == 0 {
         logger.info(format!("n post received: {}", n_post_received))
     }
+}
+
+fn publish_comments(exchange: &Exchange, comments: &Vec<Comment>) {
+
+    let payload_comments: Vec<CommentData> = comments
+        .into_iter()
+        .map(|comment| CommentData {
+            permalink: comment.permalink.clone(),
+            body: comment.body.clone(),
+            sentiment: comment.sentiment,
+        })
+        .rev()
+        .collect();
+
+    let msg_comments = MessageCommentss {
+        opcode: 1,
+        payload: Some(payload_comments),
+    };
+
+    exchange
+        .publish(Publish::new(
+            serde_json::to_string(&msg_comments).unwrap().as_bytes(),
+            QUEUE_COMMENTS_TO_MAP,
+        ))
+        .unwrap();
 }
 
 fn handle_comment(
@@ -80,30 +116,11 @@ fn handle_comment(
 ) {
     let comments = Comment::deserialize_multiple(payload);
 
+    publish_comments(exchange, &comments);
+
     *n_comment_received = *n_comment_received + comments.len();
 
-    let comments_: Value;
-
-    comments_ = comments
-        .into_iter()
-        .map(|comment| {
-            json!({
-                "permalink": comment.permalink,
-                "body": comment.body,
-                "sentiment": comment.sentiment
-            })
-        })
-        .rev()
-        .collect();
-
-    exchange
-        .publish(Publish::new(
-            comments_.to_string().as_bytes(),
-            QUEUE_COMMENTS_TO_MAP,
-        ))
-        .unwrap();
-
-    if *n_comment_received % 100000 == 0 {
+    if *n_comment_received % LOG_RATE == 0 {
         logger.info(format!("n comment received: {}", n_comment_received))
     }
 }
