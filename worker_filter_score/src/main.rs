@@ -2,7 +2,7 @@ use crate::{entities::post::Post, utils::logger::Logger};
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use messages::{message_post::MessagePost, message_score_avg::MessageScoreAvg};
+use messages::{message_posts::MessagePosts, message_score_avg::MessageScoreAvg};
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
@@ -85,7 +85,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessagePost = serde_json::from_str(&body).unwrap();
+                let msg: MessagePosts = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 

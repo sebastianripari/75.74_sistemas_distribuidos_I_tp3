@@ -2,10 +2,12 @@ use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Log
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+use messages::message_post::{MessagePosts, PostData};
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
 mod entities;
+mod messages;
 mod utils;
 
 // queue input
@@ -30,30 +32,12 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
     *n_post_received = *n_post_received + posts.len();
 
     let payload_scores: Value;
-    let payload_posts: Value;
 
     payload_scores = posts.iter().map(|post| post.score).rev().collect();
-
-    payload_posts = posts
-        .iter()
-        .map(|post| {
-            json!({
-                "post_id": post.id,
-                "score": post.score,
-                "url": post.url,
-            })
-        })
-        .rev()
-        .collect();
 
     let msg_scores = json!({
         "opcode": 1,
         "payload": payload_scores
-    });
-
-    let msg_posts = json!({
-        "opcode": 1,
-        "payload": payload_posts
     });
 
     exchange
@@ -63,9 +47,24 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
         ))
         .unwrap();
 
+    let payload_posts: Vec<PostData> = posts
+        .iter()
+        .map(|post| PostData {
+            post_id: post.id.clone(),
+            score: post.score,
+            url: post.url.clone(),
+        })
+        .rev()
+        .collect();
+
+    let msg_posts = MessagePosts {
+        opcode: 1,
+        payload: Some(payload_posts),
+    };
+
     exchange
         .publish(Publish::new(
-            msg_posts.to_string().as_bytes(),
+            serde_json::to_string(&msg_posts).unwrap().as_bytes(),
             QUEUE_POSTS_TO_FILTER_SCORE,
         ))
         .unwrap();
