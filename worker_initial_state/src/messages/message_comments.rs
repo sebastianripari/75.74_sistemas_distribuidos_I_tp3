@@ -8,7 +8,7 @@ pub struct CommentData {
 }
 
 #[derive(Serialize)]
-pub struct MessageCommentss {
+pub struct MessageComments {
     pub opcode: u8,
     pub payload: Option<Vec<CommentData>>
 }
