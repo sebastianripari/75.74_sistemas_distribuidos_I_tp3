@@ -1,13 +1,22 @@
+use crate::utils::logger::Logger;
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-
-use serde_json::{json, Value};
+use serde::Deserialize;
+use serde_json::{json};
 use std::{env, thread, time::Duration};
-
-use crate::utils::logger::Logger;
-
 mod utils;
+
+#[derive(Deserialize)]
+struct PayloadScores {
+    scores: Vec<i32>
+}
+
+#[derive(Deserialize)]
+struct MsgScores {
+    opcode: u8,
+    payload: PayloadScores
+}
 
 const LOG_LEVEL: &str = "debug";
 
@@ -79,8 +88,9 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MsgScores = serde_json::from_str(&body).unwrap();
 
-                if body == "end" {
+                if msg.opcode == 0 {
                     logger.info("doing end".to_string());
 
                     exchange
@@ -101,36 +111,24 @@ fn main() {
                         ))
                         .unwrap();
 
-                    score_count = 0;
-                    score_sum = 0;
-
                     consumer.ack(delivery).unwrap();
                     break;
-                }
+                } else {
+                    let payload = msg.payload;
+                    let scores = payload.scores;
+                    n_processed = n_processed + scores.len();
 
-                let deserialized: Value = serde_json::from_str(&body).unwrap();
-                let array = deserialized.as_array().unwrap();
-
-                n_processed = n_processed + array.len();
-
-                for value in array {
-                    logger.debug(format!("processing: {}", value));
-                    let score = value["score"].to_string();
-
-                    match score.parse::<i32>() {
-                        Ok(score) => {
-                            score_count = score_count + 1;
-                            score_sum = score_sum + score as u64;
-                        }
-                        Err(err) => logger.info(format!("error: {}", err)),
+                    for score in scores {
+                        logger.debug(format!("processing: {}", score));
+                        score_count = score_count + 1;
+                        score_sum = score_sum + score as u64;
                     }
-                }
 
-                if n_processed % 100000 == 0 {
-                    logger.info(format!("n processed: {}", score_count));
+                    if n_processed % 100000 == 0 {
+                        logger.info(format!("n processed: {}", score_count));
+                    }
+                    consumer.ack(delivery).unwrap();
                 }
-
-                consumer.ack(delivery).unwrap();
             }
             _ => {
                 logger.info("error consuming".to_string());

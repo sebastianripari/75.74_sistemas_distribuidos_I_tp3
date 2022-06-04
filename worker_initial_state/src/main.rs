@@ -30,20 +30,12 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 
     *n_post_received = *n_post_received + posts.len();
 
-    let scores: Value;
-    let posts_: Value;
+    let payload_scores: Value;
+    let payload_posts: Value;
 
-    scores = posts
-        .iter()
-        .map(|post| {
-            json!({
-                "score": post.score
-            })
-        })
-        .rev()
-        .collect();
+    payload_scores = posts.iter().map(|post| post.score).rev().collect();
 
-    posts_ = posts
+    payload_posts = posts
         .iter()
         .map(|post| {
             json!({
@@ -55,19 +47,26 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
         .rev()
         .collect();
 
-    if let Err(err) = exchange.publish(Publish::new(
-        scores.to_string().as_bytes(),
-        QUEUE_POSTS_TO_AVG,
-    )) {
-        logger.info(format!("could not publish: {:?}", err))
-    }
+    let msg_scores = json!({
+        "opcode": 1,
+        "payload": {
+            "scores": payload_scores
+        }
+    });
 
-    if let Err(err) = exchange.publish(Publish::new(
-        posts_.to_string().as_bytes(),
-        QUEUE_POSTS_TO_FILTER_SCORE,
-    )) {
-        logger.info(format!("could not publish: {:?}", err))
-    }
+    exchange
+        .publish(Publish::new(
+            msg_scores.to_string().as_bytes(),
+            QUEUE_POSTS_TO_AVG,
+        ))
+        .unwrap();
+
+    exchange
+        .publish(Publish::new(
+            payload_posts.to_string().as_bytes(),
+            QUEUE_POSTS_TO_FILTER_SCORE,
+        ))
+        .unwrap();
 
     if *n_post_received % 100000 == 0 {
         logger.info(format!("n post received: {}", n_post_received))
@@ -112,6 +111,7 @@ fn handle_comment(
 
 fn handle_comment_end(exchange: &Exchange, logger: Logger) {
     logger.info("comments done".to_string());
+
     exchange
         .publish(Publish::new(
             "end".to_string().as_bytes(),
@@ -121,9 +121,13 @@ fn handle_comment_end(exchange: &Exchange, logger: Logger) {
 }
 
 fn handle_post_end(exchange: &Exchange, logger: Logger) {
+    let msg_end = json!({
+        "opcode": 0
+    });
+
     exchange
         .publish(Publish::new(
-            "end".to_string().as_bytes(),
+            msg_end.to_string().as_bytes(),
             QUEUE_POSTS_TO_AVG,
         ))
         .unwrap();

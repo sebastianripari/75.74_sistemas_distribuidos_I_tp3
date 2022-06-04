@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 amiquip = "0.4.2"
 serde_json = "1.0"
+serde = { version = "1", features = ["derive"] }

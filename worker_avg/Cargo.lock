@@ -1037,6 +1037,7 @@ name = "worker_avg"
 version = "0.1.0"
 dependencies = [
  "amiquip",
+ "serde",
  "serde_json",
 ]
 
