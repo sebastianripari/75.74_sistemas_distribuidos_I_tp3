@@ -1,67 +1,26 @@
 use crate::utils::logger::Logger;
-use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
-};
+use amiquip::{Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use handlers::handle_calc_avg::handle_calc_avg;
+use handlers::handle_calc_avg_end::handle_calc_avg_end;
 use messages::{
-    message_score_avg::MessageScoreAvg,
     message_scores::MessageScores,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
 use std::{env, thread, time::Duration};
 
+mod handlers;
 mod messages;
 mod utils;
 
-const LOG_RATE: usize = 100000;
+pub const LOG_RATE: usize = 100000;
 const LOG_LEVEL: &str = "debug";
 
 // queue input
-const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
+pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 
 // queue output
-const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
-const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
-
-fn publish_score_avg(exchange: &Exchange, score_avg: f32) {
-    let msg = MessageScoreAvg {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(score_avg),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg).unwrap().as_bytes(),
-            AVG_TO_FILTER_SCORE,
-        ))
-        .unwrap();
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg).unwrap().as_bytes(),
-            QUEUE_TO_CLIENT,
-        ))
-        .unwrap();
-}
-
-fn process_message(
-    scores: Vec<i32>,
-    n: &mut usize,
-    logger: &Logger,
-    count: &mut usize,
-    sum: &mut u64,
-) {
-    *n += scores.len();
-
-    for score in scores {
-        logger.debug(format!("processing: {}", score));
-        *count += 1;
-        *sum += score as u64;
-    }
-
-    if *n % LOG_RATE == 0 {
-        logger.info(format!("n processed: {}", n));
-    }
-}
+pub const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
+pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
@@ -143,12 +102,11 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        logger.info("doing end".to_string());
-                        publish_score_avg(&exchange, score_sum as f32 / score_count as f32);
+                        handle_calc_avg_end(&exchange, &logger, score_sum, score_count);
                         end = true;
                     }
                     MESSAGE_OPCODE_NORMAL => {
-                        process_message(
+                        handle_calc_avg(
                             payload.unwrap(),
                             &mut n_processed,
                             &logger,
