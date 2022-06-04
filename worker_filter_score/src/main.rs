@@ -1,26 +1,14 @@
+use crate::{entities::post::Post, utils::logger::Logger};
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use serde::Deserialize;
+use messages::{message_post::MessagePost, message_score_avg::MessageScoreAvg};
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
 mod entities;
+mod messages;
 mod utils;
-
-use crate::{entities::post::Post, utils::logger::Logger};
-
-#[derive(Deserialize, Debug)]
-struct MsgPost {
-    post_id: String,
-    score: i32,
-    url: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct MsgScoreAvg {
-    score_avg: i32,
-}
 
 const LOG_LEVEL: &str = "debug";
 
@@ -90,7 +78,6 @@ fn main() {
     let consumer_score_avg = queue_score_avg.consume(ConsumerOptions::default()).unwrap();
 
     let mut n_processed = 0;
-
     let mut posts = Vec::new();
     let mut score_avg = 0;
 
@@ -98,26 +85,32 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessagePost = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if body == "end" {
+                if opcode == 0 {
                     consumer_posts.ack(delivery).unwrap();
                     break;
                 }
 
-                let array: Vec<MsgPost> = serde_json::from_str(&body).unwrap();
-                n_processed = n_processed + array.len();
+                if opcode == 1 {
+                    if let Some(payload) = payload {
+                        n_processed = n_processed + payload.len();
 
-                for value in array {
-                    let post_id = value.post_id.to_string();
-                    let score = value.score;
-                    let url = value.url;
+                        for post in payload {
+                            let post_id = post.post_id;
+                            let score = post.score;
+                            let url = post.url;
 
-                    let post = Post::new(post_id, score, url);
-                    posts.push(post);
-                }
+                            let post = Post::new(post_id, score, url);
+                            posts.push(post);
+                        }
 
-                if posts.len() % 100000 == 0 {
-                    logger.info(format!("processing: {}", n_processed));
+                        if posts.len() % 100000 == 0 {
+                            logger.info(format!("processing: {}", n_processed));
+                        }
+                    }
                 }
 
                 consumer_posts.ack(delivery).unwrap();
@@ -130,14 +123,23 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessageScoreAvg = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                let value: MsgScoreAvg = serde_json::from_str(&body).unwrap();
-
-                score_avg = value.score_avg;
-                logger.info(format!("received score_avg: {}", score_avg));
-
-                consumer_score_avg.ack(delivery).unwrap();
-                break;
+                match opcode {
+                    1 => {
+                        if let Some(payload) = payload {
+                            score_avg = payload;
+                            logger.info(format!("received score_avg: {}", score_avg));
+                            consumer_score_avg.ack(delivery).unwrap();
+                            break;
+                        }
+                    }
+                    _ => {
+                        consumer_score_avg.ack(delivery).unwrap();
+                    }
+                }
             }
             _ => {}
         }

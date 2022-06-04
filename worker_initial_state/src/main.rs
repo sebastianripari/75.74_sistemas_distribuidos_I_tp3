@@ -14,7 +14,6 @@ const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
 // queue output
 const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
-const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
 // msg opcodes
@@ -49,9 +48,12 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 
     let msg_scores = json!({
         "opcode": 1,
-        "payload": {
-            "scores": payload_scores
-        }
+        "payload": payload_scores
+    });
+
+    let msg_posts = json!({
+        "opcode": 1,
+        "payload": payload_posts
     });
 
     exchange
@@ -63,7 +65,7 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 
     exchange
         .publish(Publish::new(
-            payload_posts.to_string().as_bytes(),
+            msg_posts.to_string().as_bytes(),
             QUEUE_POSTS_TO_FILTER_SCORE,
         ))
         .unwrap();
@@ -134,7 +136,7 @@ fn handle_post_end(exchange: &Exchange, logger: Logger) {
 
     exchange
         .publish(Publish::new(
-            "end".to_string().as_bytes(),
+            msg_end.to_string().as_bytes(),
             QUEUE_POSTS_TO_FILTER_SCORE,
         ))
         .unwrap();

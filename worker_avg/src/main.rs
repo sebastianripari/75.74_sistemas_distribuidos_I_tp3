@@ -2,21 +2,12 @@ use crate::utils::logger::Logger;
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use serde::Deserialize;
-use serde_json::{json};
+use messages::message_scores::MessageScores;
+use serde_json::json;
 use std::{env, thread, time::Duration};
+
+mod messages;
 mod utils;
-
-#[derive(Deserialize)]
-struct PayloadScores {
-    scores: Vec<i32>
-}
-
-#[derive(Deserialize)]
-struct MsgScores {
-    opcode: u8,
-    payload: Option<PayloadScores>
-}
 
 const LOG_LEVEL: &str = "debug";
 
@@ -88,52 +79,61 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MsgScores = serde_json::from_str(&body).unwrap();
+                let msg: MessageScores = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if msg.opcode == 0 {
-                    logger.info("doing end".to_string());
+                match opcode {
+                    0 => {
+                        logger.info("doing end".to_string());
 
-                    exchange
-                        .publish(Publish::new(
-                            json!({ "score_avg": score_sum / score_count })
-                                .to_string()
-                                .as_bytes(),
-                            AVG_TO_FILTER_SCORE,
-                        ))
-                        .unwrap();
+                        let json_score_avg = json!({
+                            "opcode": 1,
+                            "payload": score_sum / score_count
+                        });
 
-                    exchange
-                        .publish(Publish::new(
-                            json!({ "score_avg": score_sum / score_count })
-                                .to_string()
-                                .as_bytes(),
-                            QUEUE_TO_CLIENT,
-                        ))
-                        .unwrap();
+                        exchange
+                            .publish(Publish::new(
+                                json_score_avg
+                                    .to_string()
+                                    .as_bytes(),
+                                AVG_TO_FILTER_SCORE,
+                            ))
+                            .unwrap();
 
-                    consumer.ack(delivery).unwrap();
-                    break;
-                } else {
-                    let payload = msg.payload;
-                    let scores = payload.unwrap().scores;
-                    n_processed = n_processed + scores.len();
+                        exchange
+                            .publish(Publish::new(
+                                json!({ "score_avg": score_sum / score_count })
+                                    .to_string()
+                                    .as_bytes(),
+                                QUEUE_TO_CLIENT,
+                            ))
+                            .unwrap();
 
-                    for score in scores {
-                        logger.debug(format!("processing: {}", score));
-                        score_count = score_count + 1;
-                        score_sum = score_sum + score as u64;
+                        consumer.ack(delivery).unwrap();
+                        break;
                     }
+                    1 => {
+                        let scores = payload.unwrap();
+                        n_processed = n_processed + scores.len();
 
-                    if n_processed % 100000 == 0 {
-                        logger.info(format!("n processed: {}", score_count));
+                        for score in scores {
+                            logger.debug(format!("processing: {}", score));
+                            score_count = score_count + 1;
+                            score_sum = score_sum + score as u64;
+                        }
+
+                        if n_processed % 100000 == 0 {
+                            logger.info(format!("n processed: {}", score_count));
+                        }
+                        consumer.ack(delivery).unwrap();
                     }
-                    consumer.ack(delivery).unwrap();
+                    _ => {
+                        consumer.ack(delivery).unwrap();
+                    }
                 }
             }
-            _ => {
-                logger.info("error consuming".to_string());
-                break;
-            }
+            _ => {}
         }
     }
     logger.info("stop consuming".to_string());
