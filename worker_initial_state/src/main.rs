@@ -2,7 +2,7 @@ use crate::{entities::comment::Comment, entities::post::Post, utils::logger::Log
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use messages::message_post::{MessagePosts, PostData};
+use messages::{message_post::{MessagePosts, PostData}, message_scores::MessageScores};
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
 
@@ -31,18 +31,16 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 
     *n_post_received = *n_post_received + posts.len();
 
-    let payload_scores: Value;
+    let payload_scores = posts.iter().map(|post| post.score).rev().collect();
 
-    payload_scores = posts.iter().map(|post| post.score).rev().collect();
-
-    let msg_scores = json!({
-        "opcode": 1,
-        "payload": payload_scores
-    });
+    let msg_scores = MessageScores {
+        opcode: 1,
+        payload: Some(payload_scores)
+    };
 
     exchange
         .publish(Publish::new(
-            msg_scores.to_string().as_bytes(),
+            serde_json::to_string(&msg_scores).unwrap().as_bytes(),
             QUEUE_POSTS_TO_AVG,
         ))
         .unwrap();
