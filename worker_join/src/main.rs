@@ -1,26 +1,22 @@
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use serde::Deserialize;
-use serde_json::Error;
 use std::{collections::HashMap, env, thread, time::Duration};
 
+use crate::handlers::handle_comments::handle_comments;
 use crate::handlers::handle_posts::handle_posts;
+use crate::messages::inbound::message_comments::MessageComments;
 use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use crate::{messages::inbound::message_posts::MessagePosts, utils::logger::Logger};
 
 mod entities;
+mod handlers;
 mod messages;
 mod utils;
-mod handlers;
 
 #[derive(Deserialize, Debug)]
 struct Msg {
     post_id: String,
     url: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct MsgComment {
-    post_id: String,
 }
 
 pub const LOG_RATE: usize = 10000;
@@ -121,15 +117,9 @@ fn main() {
                         end = true;
                     }
                     MESSAGE_OPCODE_NORMAL => {
-                        handle_posts(
-                            payload.unwrap(),
-                            &mut n_post_processed,
-                            &mut posts,
-                            &logger
-                        )
+                        handle_posts(payload.unwrap(), &mut n_post_processed, &mut posts, &logger)
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
 
                 consumer_posts.ack(delivery).unwrap();
@@ -144,37 +134,38 @@ fn main() {
 
     let mut n_comments_processed = 0;
     let mut n_joins = 0;
+    let mut end = false;
     for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessageComments = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if body == "end" {
-                    logger.info("doing end".to_string());
-                    logger.info(format!("n joins: {}", n_joins));
-                    consumer_posts.ack(delivery).unwrap();
+                match opcode {
+                    MESSAGE_OPCODE_END => {
+                        logger.info("doing end".to_string());
+                        logger.info(format!("n joins: {}", n_joins));
+                        end = true;
+                    }
+                    MESSAGE_OPCODE_NORMAL => {
+                        handle_comments(
+                            payload.unwrap(),
+                            &mut n_comments_processed,
+                            &mut n_joins,
+                            &mut posts,
+                            &logger,
+                        );
+                    }
+                    _ => {}
+                }
+
+                consumer_posts.ack(delivery).unwrap();
+
+                if end {
                     break;
                 }
-
-                n_comments_processed = n_comments_processed + 1;
-
-                let value_result: Result<MsgComment, Error> = serde_json::from_str(&body);
-                if let Ok(value) = value_result {
-                    if n_comments_processed % 1000 == 0 {
-                        logger.info(format!("n comments processed: {}", n_comments_processed));
-                    }
-
-                    if let Some(post_url) = posts.get(&value.post_id) {
-                        logger.debug(format!("join ok, id: {}, url: {}", value.post_id, post_url));
-                        n_joins = n_joins + 1;
-                        if n_joins % 100 == 0 {
-                            logger.info(format!("n joins: {}", n_joins));
-                        }
-                    }
-                    posts.remove(&value.post_id);
-                }
-
-                consumer_comments.ack(delivery).unwrap();
             }
             _ => logger.info("error consuming".to_string()),
         }

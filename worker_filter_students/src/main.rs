@@ -1,6 +1,7 @@
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+use messages::{outbound::message_comment::{MessageComment, Data}, opcodes::{MESSAGE_OPCODE_NORMAL, MESSAGE_OPCODE_END}};
 use serde::Deserialize;
 use serde_json::json;
 use std::{env, thread, time::Duration};
@@ -8,6 +9,7 @@ use std::{env, thread, time::Duration};
 use crate::utils::logger::Logger;
 
 mod utils;
+mod messages;
 
 const LOG_LEVEL: &str = "debug";
 
@@ -100,12 +102,19 @@ fn main() {
 
                 if body == "end" {
                     logger.info("doing end".to_string());
+
+                    let msg_end = MessageComment{
+                        opcode: MESSAGE_OPCODE_END,
+                        payload: None
+                    };
+
                     exchange
                         .publish(Publish::new(
-                            "end".to_string().as_bytes(),
+                            serde_json::to_string(&msg_end).unwrap().as_bytes(),
                             QUEUE_COMMENTS_TO_JOIN,
                         ))
                         .unwrap();
+
                     consumer.ack(delivery).unwrap();
                     break;
                 }
@@ -118,9 +127,19 @@ fn main() {
                     for word in STUDENTS_WORDS {
                         if value.body.to_ascii_lowercase().contains(word) {
                             logger.debug("match student".to_string());
+
+                            let payload = Data {
+                                post_id: value.post_id
+                            };
+
+                            let msg_comment = MessageComment {
+                                opcode: MESSAGE_OPCODE_NORMAL,
+                                payload: Some(payload)
+                            };
+
                             exchange
                                 .publish(Publish::new(
-                                    json!({ "post_id": value.post_id }).to_string().as_bytes(),
+                                    serde_json::to_string(&msg_comment).unwrap().as_bytes(),
                                     QUEUE_COMMENTS_TO_JOIN,
                                 ))
                                 .unwrap();
