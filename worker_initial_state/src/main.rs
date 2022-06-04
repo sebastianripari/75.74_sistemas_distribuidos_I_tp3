@@ -3,10 +3,11 @@ use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use messages::{
+    message_comments::{CommentData, MessageCommentss},
     message_posts::{MessagePosts, PostData},
-    message_scores::MessageScores, message_comments::{CommentData, MessageCommentss},
+    message_scores::MessageScores,
 };
-use serde_json::{json, Value};
+use serde_json;
 use std::{env, thread, time::Duration};
 
 mod entities;
@@ -84,7 +85,6 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
 }
 
 fn publish_comments(exchange: &Exchange, comments: &Vec<Comment>) {
-
     let payload_comments: Vec<CommentData> = comments
         .into_iter()
         .map(|comment| CommentData {
@@ -136,24 +136,37 @@ fn handle_comment_end(exchange: &Exchange, logger: Logger) {
         .unwrap()
 }
 
-fn handle_post_end(exchange: &Exchange, logger: Logger) {
-    let msg_end = json!({
-        "opcode": 0
-    });
+fn publish_end_scores(exchange: &Exchange) {
+    let msg_end = MessageScores {
+        opcode: 0,
+        payload: None,
+    };
 
     exchange
         .publish(Publish::new(
-            msg_end.to_string().as_bytes(),
+            serde_json::to_string(&msg_end).unwrap().as_bytes(),
             QUEUE_POSTS_TO_AVG,
         ))
         .unwrap();
+}
+
+fn publish_end_posts(exchange: &Exchange) {
+    let msg_end = MessagePosts {
+        opcode: 0,
+        payload: None,
+    };
 
     exchange
         .publish(Publish::new(
-            msg_end.to_string().as_bytes(),
+            serde_json::to_string(&msg_end).unwrap().as_bytes(),
             QUEUE_POSTS_TO_FILTER_SCORE,
         ))
         .unwrap();
+}
+
+fn handle_post_end(exchange: &Exchange, logger: Logger) {
+    publish_end_scores(exchange);
+    publish_end_posts(exchange);
 
     logger.info("posts done".to_string());
 }
