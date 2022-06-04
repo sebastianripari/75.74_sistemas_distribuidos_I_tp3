@@ -1,12 +1,12 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct Data {
+pub struct DataOutboundComment {
     pub post_id: String,
 }
 
 #[derive(Serialize)]
-pub struct MessageComment {
+pub struct MessageOutboundComment {
     pub opcode: u8,
-    pub payload: Option<Data>
+    pub payload: Option<DataOutboundComment>
 }

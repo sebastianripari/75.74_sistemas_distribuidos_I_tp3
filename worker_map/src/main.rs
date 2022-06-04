@@ -2,7 +2,7 @@ use crate::utils::logger::Logger;
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use messages::message_comments::{MessageComments};
+use messages::{outbound::message_comments::{CommentOutboundData, MessageOutboundComments}, inbound::message_comments::MessageInboundComments};
 use regex::Regex;
 use serde_json::{json, Value};
 use std::{env, thread, time::Duration};
@@ -75,55 +75,67 @@ fn main() {
 
     let mut n_processed = 0;
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
-
+    let mut end = false;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageComments = serde_json::from_str(&body).unwrap();
+                let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
                 match opcode {
                     0 => {
                         logger.info("doing end".to_string());
+
+                        let msg_end = MessageOutboundComments{
+                            opcode: 0,
+                            payload: None
+                        };
+
                         exchange
                             .publish(Publish::new(
-                                "end".to_string().as_bytes(),
+                                serde_json::to_string(&msg_end).unwrap().as_bytes(),
                                 QUEUE_COMMENTS_TO_FILTER_STUDENTS,
                             ))
                             .unwrap();
-                        consumer.ack(delivery).unwrap();
-                        break;
+                        
+                        end = true;
                     }
                     1 => {
                         if let Some(payload) = payload {
                             n_processed = n_processed + payload.len();
 
-                            let array_mapped: Value = payload
-                                .into_iter()
+                            let payload_comments: Vec<CommentOutboundData> = payload
+                                .iter()
                                 .map(|comment| {
-                                    let permalink = comment.permalink;
+                                    let permalink = comment.permalink.to_string();
 
                                     if let Some(captures) = regex.captures(&permalink) {
                                         let post_id = captures.get(1).unwrap().as_str();
-                                        json!({
-                                            "post_id": post_id,
-                                            "body": comment.body,
-                                        })
+                                        
+                                        CommentOutboundData{
+                                            post_id: post_id.to_string(),
+                                            body: comment.body.to_string()
+                                        }
                                     } else {
-                                        json!({
-                                            "post_id": "",
-                                            "body": comment.body,
-                                        })
+                                        CommentOutboundData{
+                                            post_id: "".to_string(),
+                                            body: comment.body.to_string()
+                                        }
                                     }
                                 })
                                 .rev()
                                 .collect();
 
+                            let msg_comments = MessageOutboundComments{
+                                opcode: 1,
+                                payload: Some(payload_comments)
+                            };
+
                             exchange
                                 .publish(Publish::new(
-                                    array_mapped.to_string().as_bytes(),
+                                    serde_json::to_string(&msg_comments).unwrap().as_bytes(),
                                     QUEUE_COMMENTS_TO_FILTER_STUDENTS,
                                 ))
                                 .unwrap();
@@ -131,12 +143,16 @@ fn main() {
                         if n_processed % LOG_RATE == 0 {
                             logger.info(format!("n processed: {}", n_processed));
                         }
-                        consumer.ack(delivery).unwrap();
                     }
                     _ => {
-                        consumer.ack(delivery).unwrap();
                     }
                 }
+
+                if end {
+                    break;
+                }
+
+                consumer.ack(delivery).unwrap();
             }
             _ => {}
         }

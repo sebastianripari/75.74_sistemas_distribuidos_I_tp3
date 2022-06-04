@@ -1,1 +1,2 @@
-pub mod message_comments;
+pub mod inbound;
+pub mod outbound;

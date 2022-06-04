@@ -1,32 +1,28 @@
 use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+    Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
 };
-use messages::{outbound::message_comment::{MessageComment, Data}, opcodes::{MESSAGE_OPCODE_NORMAL, MESSAGE_OPCODE_END}};
-use serde::Deserialize;
-use serde_json::json;
-use std::{env, thread, time::Duration};
+use messages::{
+    inbound::{message_comments::MessageInboundComments},
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}
+};
+use handlers::handle_comments::handle_comments;
+use handlers::handle_comments_end::handle_comments_end;
 
+use std::{env, thread, time::Duration};
 use crate::utils::logger::Logger;
 
-mod utils;
 mod messages;
+mod utils;
+mod handlers;
 
+const LOG_RATE: usize = 100000;
 const LOG_LEVEL: &str = "debug";
-
-#[derive(Deserialize, Debug)]
-struct MsgComment {
-    post_id: String,
-    body: String,
-}
 
 // queue input
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 
 // queue output
-const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
-
-const STUDENTS_WORDS: [&'static str; 5] =
-    ["university", "college", "student", "teacher", "professor"];
+pub const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
@@ -95,61 +91,36 @@ fn main() {
     let exchange = Exchange::direct(&channel);
 
     let mut n_processed = 0;
+    let mut end = false;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if body == "end" {
-                    logger.info("doing end".to_string());
-
-                    let msg_end = MessageComment{
-                        opcode: MESSAGE_OPCODE_END,
-                        payload: None
-                    };
-
-                    exchange
-                        .publish(Publish::new(
-                            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-                            QUEUE_COMMENTS_TO_JOIN,
-                        ))
-                        .unwrap();
-
-                    consumer.ack(delivery).unwrap();
-                    break;
-                }
-
-                let array: Vec<MsgComment> = serde_json::from_str(&body).unwrap();
-                n_processed = n_processed + array.len();
-
-                for value in array {
-                    logger.debug(format!("processing: {:?}", value));
-                    for word in STUDENTS_WORDS {
-                        if value.body.to_ascii_lowercase().contains(word) {
-                            logger.debug("match student".to_string());
-
-                            let payload = Data {
-                                post_id: value.post_id
-                            };
-
-                            let msg_comment = MessageComment {
-                                opcode: MESSAGE_OPCODE_NORMAL,
-                                payload: Some(payload)
-                            };
-
-                            exchange
-                                .publish(Publish::new(
-                                    serde_json::to_string(&msg_comment).unwrap().as_bytes(),
-                                    QUEUE_COMMENTS_TO_JOIN,
-                                ))
-                                .unwrap();
-                            break;
-                        }
+                match opcode {
+                    MESSAGE_OPCODE_END => {
+                        handle_comments_end(
+                            &exchange,
+                            &logger
+                        );
+                        end = true
                     }
+                    MESSAGE_OPCODE_NORMAL => {
+                        handle_comments(
+                            payload.unwrap(),
+                            &mut n_processed,
+                            &logger,
+                            &exchange
+                        );
+                    }
+                    _ => {}
                 }
 
-                if n_processed % 100000 == 0 {
-                    logger.info(format!("n processed: {}", n_processed))
+                if end {
+                    break;
                 }
 
                 consumer.ack(delivery).unwrap();

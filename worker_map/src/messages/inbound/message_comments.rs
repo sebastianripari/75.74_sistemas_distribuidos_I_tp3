@@ -1,14 +1,14 @@
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub struct CommentData {
+pub struct CommentInboundData {
     pub permalink: String,
     pub body: String,
     pub sentiment: f32
 }
 
 #[derive(Deserialize)]
-pub struct MessageComments {
+pub struct MessageInboundComments {
     pub opcode: u8,
-    pub payload: Option<Vec<CommentData>>
+    pub payload: Option<Vec<CommentInboundData>>
 }
