@@ -17,6 +17,7 @@ const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
+// msg opcodes
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT: u8 = 2;
@@ -26,7 +27,6 @@ const LOG_LEVEL: &str = "debug";
 
 fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize, logger: Logger) {
     let posts = Post::deserialize_multiple(payload);
-    let posts_clone = posts.clone();
 
     *n_post_received = *n_post_received + posts.len();
 
@@ -34,7 +34,7 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
     let posts_: Value;
 
     scores = posts
-        .into_iter()
+        .iter()
         .map(|post| {
             json!({
                 "score": post.score
@@ -43,8 +43,8 @@ fn handle_post(payload: String, exchange: &Exchange, n_post_received: &mut usize
         .rev()
         .collect();
 
-    posts_ = posts_clone
-        .into_iter()
+    posts_ = posts
+        .iter()
         .map(|post| {
             json!({
                 "post_id": post.id,
