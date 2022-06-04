@@ -15,7 +15,7 @@ struct PayloadScores {
 #[derive(Deserialize)]
 struct MsgScores {
     opcode: u8,
-    payload: PayloadScores
+    payload: Option<PayloadScores>
 }
 
 const LOG_LEVEL: &str = "debug";
@@ -115,7 +115,7 @@ fn main() {
                     break;
                 } else {
                     let payload = msg.payload;
-                    let scores = payload.scores;
+                    let scores = payload.unwrap().scores;
                     n_processed = n_processed + scores.len();
 
                     for score in scores {
