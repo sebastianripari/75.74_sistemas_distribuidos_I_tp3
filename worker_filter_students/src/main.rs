@@ -86,10 +86,6 @@ fn main() {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
 
-                if body == "stop" {
-                    break;
-                }
-
                 if body == "end" {
                     logger.info("doing end".to_string());
                     exchange

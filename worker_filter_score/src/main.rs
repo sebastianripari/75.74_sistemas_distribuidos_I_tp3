@@ -40,8 +40,6 @@ fn main() {
 
     logger.info("start".to_string());
 
-    let mut stop = false;
-
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
@@ -101,12 +99,6 @@ fn main() {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
 
-                if body == "stop" {
-                    stop = true;
-                    consumer_posts.ack(delivery).unwrap();
-                    break;
-                }
-
                 if body == "end" {
                     consumer_posts.ack(delivery).unwrap();
                     break;
@@ -138,11 +130,6 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-
-                if body == "stop" {
-                    stop = true;
-                    break;
-                }
 
                 let value: MsgScoreAvg = serde_json::from_str(&body).unwrap();
 
