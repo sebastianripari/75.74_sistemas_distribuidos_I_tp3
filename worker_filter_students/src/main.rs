@@ -19,24 +19,24 @@ struct MsgComment {
 
 // queue input
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
+
 // queue output
 const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 const STUDENTS_WORDS: [&'static str; 5] =
     ["university", "college", "student", "teacher", "professor"];
 
-fn main() {
+fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
     let logger = Logger::new(log_level);
 
-    logger.info("start".to_string());
+    logger
+}
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
+fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
         Ok(value) => rabbitmq_user = value,
@@ -70,6 +70,18 @@ fn main() {
         }
     }
 
+    rabbitmq_connection
+}
+
+fn main() {
+    let logger = logger_start();
+
+    logger.info("start".to_string());
+
+    // wait rabbit
+    thread::sleep(Duration::from_secs(30));
+
+    let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let queue = channel
         .queue_declare(

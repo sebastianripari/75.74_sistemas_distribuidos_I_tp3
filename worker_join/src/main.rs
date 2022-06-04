@@ -1,12 +1,16 @@
 use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use serde::Deserialize;
-use serde_json::{Error};
+use serde_json::Error;
 use std::{collections::HashMap, env, thread, time::Duration};
 
-use crate::{utils::logger::Logger, entities::post::Post};
+use crate::handlers::handle_posts::handle_posts;
+use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use crate::{messages::inbound::message_posts::MessagePosts, utils::logger::Logger};
 
 mod entities;
+mod messages;
 mod utils;
+mod handlers;
 
 #[derive(Deserialize, Debug)]
 struct Msg {
@@ -16,9 +20,10 @@ struct Msg {
 
 #[derive(Deserialize, Debug)]
 struct MsgComment {
-    post_id: String
+    post_id: String,
 }
 
+pub const LOG_RATE: usize = 10000;
 const LOG_LEVEL: &str = "debug";
 
 // queue input
@@ -27,18 +32,17 @@ const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 // queue output
 
-fn main() {
+fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
     let logger = Logger::new(log_level);
 
-    logger.info("start".to_string());
+    logger
+}
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
+fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
         Ok(value) => rabbitmq_user = value,
@@ -55,7 +59,7 @@ fn main() {
         }
     }
 
-    let mut rabbitmq_connection;
+    let rabbitmq_connection;
     match Connection::insecure_open(
         &format!(
             "amqp://{}:{}@rabbitmq:5672",
@@ -72,6 +76,18 @@ fn main() {
         }
     }
 
+    rabbitmq_connection
+}
+
+fn main() {
+    let logger = logger_start();
+
+    logger.info("start".to_string());
+
+    // wait rabbit
+    thread::sleep(Duration::from_secs(30));
+
+    let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
 
     let queue_posts_to_join = channel
@@ -90,31 +106,37 @@ fn main() {
 
     let mut n_post_processed = 0;
     let mut posts = HashMap::new();
+    let mut end = false;
     for message in consumer_posts.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                let msg: MessagePosts = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-                if body == "end" {
-                    logger.info("doing end posts".to_string());
-                    consumer_posts.ack(delivery).unwrap();
-                    break;
-                }
-
-                let array: Vec<Msg> = serde_json::from_str(&body).unwrap();
-                n_post_processed = n_post_processed + array.len();
-
-                for value in array {
-                    if value.url != "" {
-                        posts.insert(value.post_id, value.url);
+                match opcode {
+                    MESSAGE_OPCODE_END => {
+                        logger.info("doing end posts".to_string());
+                        end = true;
+                    }
+                    MESSAGE_OPCODE_NORMAL => {
+                        handle_posts(
+                            payload.unwrap(),
+                            &mut n_post_processed,
+                            &mut posts,
+                            &logger
+                        )
+                    }
+                    _ => {
                     }
                 }
 
-                if n_post_processed % 10000 == 0 {
-                    logger.info(format!("n post processed: {}", n_post_processed));
-                }
-
                 consumer_posts.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
             }
             _ => logger.info("error consuming".to_string()),
         }
@@ -141,7 +163,7 @@ fn main() {
                     if n_comments_processed % 1000 == 0 {
                         logger.info(format!("n comments processed: {}", n_comments_processed));
                     }
-    
+
                     if let Some(post_url) = posts.get(&value.post_id) {
                         logger.debug(format!("join ok, id: {}, url: {}", value.post_id, post_url));
                         n_joins = n_joins + 1;

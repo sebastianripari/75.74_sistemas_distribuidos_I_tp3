@@ -94,6 +94,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
+                
                 let splited: Vec<&str> = body.split('|').collect();
                 let opcode = splited[0].parse::<u8>().unwrap();
                 let payload = splited[1..].join("|");

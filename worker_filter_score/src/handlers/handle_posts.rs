@@ -1,5 +1,5 @@
 use crate::{
-    entities::post::Post, messages::message_posts::PostData, utils::logger::Logger, LOG_RATE,
+    entities::post::Post, messages::inbound::message_posts::PostData, utils::logger::Logger, LOG_RATE,
 };
 
 pub fn handle_posts(payload: Vec<PostData>, n: &mut usize, logger: &Logger, posts: &mut Vec<Post>) {

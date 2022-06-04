@@ -1,24 +1,30 @@
 use amiquip::{Exchange, Publish};
-use serde_json::{json, Value};
 
+use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use crate::messages::outbound::message_posts::{PostData, MessagePosts};
 use crate::{entities::post::Post, utils::logger::Logger, QUEUE_POSTS_TO_JOIN};
 
 fn publish_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
     for chunk in posts.chunks(100) {
-        let to_send: Value = chunk
-            .into_iter()
+        let payload_posts: Vec<PostData> = chunk
+            .iter()
             .map(|post| {
-                json!({
-                    "post_id": post.id.to_string(),
-                    "url": post.url.to_string()
-                })
+                PostData {
+                    post_id: post.id.to_string(),
+                    url: post.url.to_string()
+                }
             })
             .rev()
             .collect();
 
+        let message_posts = MessagePosts{
+            opcode: MESSAGE_OPCODE_NORMAL,
+            payload: Some(payload_posts)
+        };
+
         exchange
             .publish(Publish::new(
-                to_send.to_string().as_bytes(),
+                serde_json::to_string(&message_posts).unwrap().as_bytes(),
                 QUEUE_POSTS_TO_JOIN,
             ))
             .unwrap();
@@ -26,9 +32,14 @@ fn publish_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
 }
 
 fn publish_posts_filtered_end(exchange: &Exchange) {
+    let msg_end = MessagePosts {
+        opcode: MESSAGE_OPCODE_END,
+        payload: None
+    };
+
     exchange
         .publish(Publish::new(
-            "end".to_string().as_bytes(),
+            serde_json::to_string(&msg_end).unwrap().as_bytes(),
             QUEUE_POSTS_TO_JOIN,
         ))
         .unwrap();

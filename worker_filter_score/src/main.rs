@@ -1,16 +1,18 @@
-use crate::{utils::logger::Logger};
-use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
-};
+use crate::utils::logger::Logger;
+use amiquip::{Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
 use handlers::handle_posts::handle_posts;
 use handlers::handle_score_avg::handle_score_avg;
-use messages::{message_posts::MessagePosts, message_score_avg::MessageScoreAvg, opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}};
+use messages::{
+    inbound::message_posts::MessagePosts,
+    inbound::message_score_avg::MessageScoreAvg,
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+};
 use std::{env, thread, time::Duration};
 
 mod entities;
+mod handlers;
 mod messages;
 mod utils;
-mod handlers;
 
 const LOG_LEVEL: &str = "debug";
 const LOG_RATE: usize = 100000;
@@ -58,7 +60,6 @@ fn rabbitmq_connect(logger: &Logger) -> Connection {
 
     rabbitmq_connection
 }
-
 
 fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
@@ -111,12 +112,7 @@ fn main() {
                         end = true;
                     }
                     MESSAGE_OPCODE_NORMAL => {
-                        handle_posts(
-                            payload.unwrap(),
-                            &mut n_processed,
-                            &logger,
-                            &mut posts
-                        );
+                        handle_posts(payload.unwrap(), &mut n_processed, &logger, &mut posts);
                     }
                     _ => {}
                 }
@@ -142,16 +138,10 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_NORMAL => {
-                        handle_score_avg(
-                            payload.unwrap(),
-                            &logger,
-                            &mut posts,
-                            &exchange
-                        );
+                        handle_score_avg(payload.unwrap(), &logger, &mut posts, &exchange);
                         end = true;
                     }
-                    _ => {
-                    }
+                    _ => {}
                 }
 
                 consumer_score_avg.ack(delivery).unwrap();
