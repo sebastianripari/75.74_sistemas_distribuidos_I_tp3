@@ -1037,6 +1037,8 @@ name = "worker_group_by"
 version = "0.1.0"
 dependencies = [
  "amiquip",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

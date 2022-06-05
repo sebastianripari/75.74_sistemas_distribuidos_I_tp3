@@ -1,1 +1,2 @@
-pub mod message_comments;
+pub mod message_comments_body;
+pub mod message_comments_sentiment;

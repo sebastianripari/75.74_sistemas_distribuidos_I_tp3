@@ -4,15 +4,15 @@ use crate::{
     messages::{
         inbound::message_comments::CommentInboundData,
         opcodes::MESSAGE_OPCODE_NORMAL,
-        outbound::message_comments::{CommentOutboundData, MessageOutboundComments},
+        outbound::{message_comments_body::{MessageOutboundCommentsBody, DataCommentBody}, message_comments_sentiment::{DataCommentSentiment, MessageOutboundCommentsSentiment}},
     },
     utils::logger::Logger,
-    LOG_RATE, QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+    LOG_RATE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
 };
 use regex::Regex;
 
-fn publish_comments(payload: Vec<CommentOutboundData>, exchange: &Exchange) {
-    let msg_comments = MessageOutboundComments {
+fn publish_comments_body(payload: Vec<DataCommentBody>, exchange: &Exchange) {
+    let msg_comments = MessageOutboundCommentsBody {
         opcode: MESSAGE_OPCODE_NORMAL,
         payload: Some(payload),
     };
@@ -21,6 +21,21 @@ fn publish_comments(payload: Vec<CommentOutboundData>, exchange: &Exchange) {
         .publish(Publish::new(
             serde_json::to_string(&msg_comments).unwrap().as_bytes(),
             QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+        ))
+        .unwrap();
+}
+    
+
+fn publish_comments_sentiment(payload: Vec<DataCommentSentiment>, exchange: &Exchange) {
+    let msg_comments = MessageOutboundCommentsSentiment {
+        opcode: MESSAGE_OPCODE_NORMAL,
+        payload: Some(payload),
+    };
+
+    exchange
+        .publish(Publish::new(
+            serde_json::to_string(&msg_comments).unwrap().as_bytes(),
+            QUEUE_COMMENTS_TO_GROUP_BY,
         ))
         .unwrap();
 }
@@ -37,7 +52,7 @@ pub fn handle_comments(
     const COMMENT_PERMALINK_REGEX: &str =
         r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
-    let payload_comments: Vec<CommentOutboundData> = payload
+    let payload_comments_body: Vec<DataCommentBody> = payload
         .iter()
         .map(|comment| {
             let permalink = comment.permalink.to_string();
@@ -45,12 +60,12 @@ pub fn handle_comments(
             if let Some(captures) = regex.captures(&permalink) {
                 let post_id = captures.get(1).unwrap().as_str();
 
-                CommentOutboundData {
+                DataCommentBody {
                     post_id: post_id.to_string(),
                     body: comment.body.to_string(),
                 }
             } else {
-                CommentOutboundData {
+                DataCommentBody {
                     post_id: "".to_string(),
                     body: comment.body.to_string(),
                 }
@@ -59,7 +74,30 @@ pub fn handle_comments(
         .rev()
         .collect();
 
-    publish_comments(payload_comments, exchange);
+    let payload_comments_sentiment: Vec<DataCommentSentiment> = payload
+        .iter()
+        .map(|comment| {
+            let permalink = comment.permalink.to_string();
+
+            if let Some(captures) = regex.captures(&permalink) {
+                let post_id = captures.get(1).unwrap().as_str();
+
+                DataCommentSentiment {
+                    post_id: post_id.to_string(),
+                    sentiment: comment.sentiment,
+                }
+            } else {
+                DataCommentSentiment {
+                    post_id: "".to_string(),
+                    sentiment: comment.sentiment,
+                }
+            }
+        })
+        .rev()
+        .collect();
+
+    publish_comments_body(payload_comments_body, exchange);
+    publish_comments_sentiment(payload_comments_sentiment, exchange);
 
     if *n % LOG_RATE == 0 {
         logger.info(format!("n processed: {}", n));
