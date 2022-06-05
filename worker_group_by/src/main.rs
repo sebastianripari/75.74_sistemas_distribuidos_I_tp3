@@ -83,7 +83,8 @@ fn main() {
     
     let mut n_processed = 0;
     let mut comments = HashMap::new();
-    let mut end = true;
+    let mut end = false;
+    
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
