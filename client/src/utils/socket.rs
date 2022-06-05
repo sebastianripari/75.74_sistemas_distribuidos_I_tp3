@@ -26,11 +26,8 @@ impl SocketWriter {
     }
 
     pub fn send(&mut self, mensaje: String) {
-        if let Err(err) = self.writer.write((mensaje + "\n").as_bytes()) {
-            println!("{}", err);
+        if let Err(err) = self.writer.write_all((mensaje + "\n").as_bytes()) {
+            panic!("{}", err);
         }
-        if let Err(err) = self.writer.flush() {
-            println!("{}", err)
-        };
     }
 }
