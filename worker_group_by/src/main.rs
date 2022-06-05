@@ -103,6 +103,8 @@ fn main() {
                     }
                     _ => {}
                 }
+
+                consumer.ack(delivery).unwrap();
             }
             _ => {}
         }
