@@ -74,9 +74,11 @@ services:
       - tp2_net
   
   worker_map:
-    container_name: worker_map
     image: worker_map:latest
     entrypoint: /tp2/target/release/worker_map
+    deploy:
+      mode: replicated
+      replicas: 10
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
