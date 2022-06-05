@@ -1,6 +1,13 @@
 use amiquip::{Exchange, Publish};
 
-use crate::{utils::logger::Logger, messages::{message_posts::MessagePosts, message_scores::MessageScores, opcodes::{MESSAGE_OPCODE_END}}, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_AVG};
+use crate::{
+    messages::{
+        opcodes::MESSAGE_OPCODE_END, outbound::message_posts::MessagePosts,
+        outbound::message_scores::MessageScores,
+    },
+    utils::logger::Logger,
+    QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE,
+};
 
 fn publish_end_scores(exchange: &Exchange) {
     let msg_end = MessageScores {

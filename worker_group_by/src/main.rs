@@ -1,4 +1,4 @@
-use std::{thread, time::Duration, env};
+use std::{env, thread, time::Duration};
 
 use amiquip::Connection;
 use utils::logger::Logger;
@@ -7,19 +7,18 @@ mod utils;
 
 const LOG_LEVEL: &str = "debug";
 
-fn main() {
+fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
-    
+
     let logger = Logger::new(log_level);
 
-    logger.info("start".to_string());
+    logger
+}
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
+fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
         Ok(value) => rabbitmq_user = value,
@@ -52,6 +51,19 @@ fn main() {
             panic!("could not connect with rabbitmq")
         }
     }
+
+    rabbitmq_connection
+}
+
+fn main() {
+    let logger = logger_start();
+
+    logger.info("start".to_string());
+
+    // wait rabbit
+    thread::sleep(Duration::from_secs(30));
+
+    let rabbitmq_connection = rabbitmq_connect(&logger);
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())

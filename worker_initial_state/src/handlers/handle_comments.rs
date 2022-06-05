@@ -1,6 +1,14 @@
 use amiquip::{Exchange, Publish};
 
-use crate::{utils::logger::Logger, entities::comment::Comment, LOG_RATE, QUEUE_COMMENTS_TO_MAP, messages::{message_comments::{MessageComments, CommentData}, opcodes::MESSAGE_OPCODE_NORMAL}};
+use crate::{
+    entities::comment::Comment,
+    messages::{
+        opcodes::MESSAGE_OPCODE_NORMAL,
+        outbound::message_comments::{CommentData, MessageComments},
+    },
+    utils::logger::Logger,
+    LOG_RATE, QUEUE_COMMENTS_TO_MAP,
+};
 
 fn publish_comments(exchange: &Exchange, comments: &Vec<Comment>) {
     let payload_comments: Vec<CommentData> = comments

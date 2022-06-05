@@ -31,15 +31,17 @@ const OPCODE_COMMENT_END: u8 = 3;
 pub const LOG_LEVEL: &str = "debug";
 pub const LOG_RATE: usize = 100000;
 
-fn main() {
+fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
     let logger = Logger::new(log_level);
+    
+    logger
+}
 
-    logger.info("start".to_string());
-
+fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user;
     match env::var("RABBITMQ_USER") {
         Ok(value) => rabbitmq_user = value,
@@ -55,9 +57,6 @@ fn main() {
             panic!("could not get rabbitmq password from env")
         }
     }
-
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection;
     match Connection::insecure_open(
@@ -76,6 +75,18 @@ fn main() {
         }
     }
 
+    rabbitmq_connection
+}
+
+fn main() {
+    let logger = logger_start();
+
+    logger.info("start".to_string());
+
+    // wait rabbit
+    thread::sleep(Duration::from_secs(30));
+
+    let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
 

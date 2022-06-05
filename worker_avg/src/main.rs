@@ -3,7 +3,7 @@ use amiquip::{Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDecla
 use handlers::handle_calc_avg::handle_calc_avg;
 use handlers::handle_calc_avg_end::handle_calc_avg_end;
 use messages::{
-    message_scores::MessageScores,
+    inbound::message_scores::MessageScores,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
 use std::{env, thread, time::Duration};

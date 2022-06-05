@@ -1,11 +1,15 @@
 use amiquip::{Exchange, Publish};
 
-use crate::{QUEUE_COMMENTS_TO_MAP, messages::{message_comments::MessageComments, opcodes::MESSAGE_OPCODE_END}, utils::logger::Logger};
+use crate::{
+    messages::{opcodes::MESSAGE_OPCODE_END, outbound::message_comments::MessageComments},
+    utils::logger::Logger,
+    QUEUE_COMMENTS_TO_MAP,
+};
 
 pub fn handle_comments_end(exchange: &Exchange, logger: Logger) {
     let msg_end = MessageComments {
         opcode: MESSAGE_OPCODE_END,
-        payload: None
+        payload: None,
     };
 
     exchange

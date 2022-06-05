@@ -1,6 +1,15 @@
 use amiquip::{Exchange, Publish};
 
-use crate::{utils::logger::Logger, entities::post::Post, QUEUE_POSTS_TO_FILTER_SCORE, messages::{message_posts::{MessagePosts, PostData}, message_scores::MessageScores, opcodes::{MESSAGE_OPCODE_NORMAL}}, QUEUE_POSTS_TO_AVG, LOG_RATE};
+use crate::{
+    entities::post::Post,
+    messages::opcodes::MESSAGE_OPCODE_NORMAL,
+    messages::outbound::{
+        message_posts::{MessagePosts, PostData},
+        message_scores::MessageScores,
+    },
+    utils::logger::Logger,
+    LOG_RATE, QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE,
+};
 
 fn publish_scores(exchange: &Exchange, posts: &Vec<Post>) {
     let payload_scores = posts.iter().map(|post| post.score).rev().collect();
@@ -42,7 +51,12 @@ fn publish_posts(exchange: &Exchange, posts: &Vec<Post>) {
         .unwrap();
 }
 
-pub fn handle_posts(payload: String, exchange: &Exchange, n_post_received: &mut usize, logger: Logger) {
+pub fn handle_posts(
+    payload: String,
+    exchange: &Exchange,
+    n_post_received: &mut usize,
+    logger: Logger,
+) {
     let posts = Post::deserialize_multiple(payload);
 
     publish_scores(&exchange, &posts);
