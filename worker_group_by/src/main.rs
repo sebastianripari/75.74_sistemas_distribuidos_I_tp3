@@ -83,6 +83,7 @@ fn main() {
     
     let mut n_processed = 0;
     let mut comments = HashMap::new();
+    let mut end = true;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -92,7 +93,9 @@ fn main() {
                 let payload = msg.payload;
 
                 match opcode {
-                    MESSAGE_OPCODE_END => {}
+                    MESSAGE_OPCODE_END => {
+                        end = true;
+                    }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
                             payload.unwrap(),
@@ -105,10 +108,16 @@ fn main() {
                 }
 
                 consumer.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
             }
             _ => {}
         }
     }
+
+    logger.info("finding max".to_string());
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())
