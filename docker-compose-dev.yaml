@@ -78,7 +78,7 @@ services:
     entrypoint: /tp2/target/release/worker_map
     deploy:
       mode: replicated
-      replicas: 10
+      replicas: 6
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
