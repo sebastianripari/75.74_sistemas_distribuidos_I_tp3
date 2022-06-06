@@ -8,7 +8,7 @@ use crate::{
         message_scores::MessageScores,
     },
     utils::logger::Logger,
-    LOG_RATE, QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE,
+    LOG_RATE, QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY,
 };
 
 fn publish_scores(exchange: &Exchange, posts: &Vec<Post>) {
@@ -47,6 +47,13 @@ fn publish_posts(exchange: &Exchange, posts: &Vec<Post>) {
         .publish(Publish::new(
             serde_json::to_string(&msg_posts).unwrap().as_bytes(),
             QUEUE_POSTS_TO_FILTER_SCORE,
+        ))
+        .unwrap();
+
+        exchange
+        .publish(Publish::new(
+            serde_json::to_string(&msg_posts).unwrap().as_bytes(),
+            QUEUE_POSTS_TO_GROUP_BY,
         ))
         .unwrap();
 }

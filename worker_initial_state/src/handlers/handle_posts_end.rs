@@ -6,7 +6,7 @@ use crate::{
         outbound::message_scores::MessageScores,
     },
     utils::logger::Logger,
-    QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE,
+    QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY,
 };
 
 fn publish_end_scores(exchange: &Exchange) {
@@ -19,6 +19,13 @@ fn publish_end_scores(exchange: &Exchange) {
         .publish(Publish::new(
             serde_json::to_string(&msg_end).unwrap().as_bytes(),
             QUEUE_POSTS_TO_AVG,
+        ))
+        .unwrap();
+
+    exchange
+        .publish(Publish::new(
+            serde_json::to_string(&msg_end).unwrap().as_bytes(),
+            QUEUE_POSTS_TO_GROUP_BY,
         ))
         .unwrap();
 }

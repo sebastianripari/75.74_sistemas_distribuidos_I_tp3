@@ -20,6 +20,7 @@ pub const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
 // queue output
 pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 pub const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
+pub const QUEUE_POSTS_TO_GROUP_BY: &str = "QUEUE_POSTS_TO_GROUP_BY";
 pub const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
 // msg opcodes
