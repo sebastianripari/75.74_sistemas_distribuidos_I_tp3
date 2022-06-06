@@ -1,13 +1,16 @@
-use std::{env, thread, time::Duration, collections::HashMap};
+use std::{collections::HashMap, env, thread, time::Duration};
 
-use amiquip::{Connection, QueueDeclareOptions, ConsumerOptions, ConsumerMessage};
-use messages::{inbound::message_comments::MessageInboundComments, opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}};
-use utils::logger::Logger;
+use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use handlers::handle_comments::handle_comments;
+use messages::{
+    inbound::message_comments::MessageInboundComments,
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+};
+use utils::logger::Logger;
 
-mod utils;
-mod messages;
 mod handlers;
+mod messages;
+mod utils;
 
 pub const LOG_RATE: usize = 100000;
 const LOG_LEVEL: &str = "debug";
@@ -43,7 +46,7 @@ fn rabbitmq_connect(logger: &Logger) -> Connection {
         }
     }
 
-    let mut rabbitmq_connection;
+    let rabbitmq_connection;
     match Connection::insecure_open(
         &format!(
             "amqp://{}:{}@rabbitmq:5672",
@@ -74,17 +77,14 @@ fn main() {
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let queue = channel
-        .queue_declare(
-            QUEUE_COMMENTS_TO_GROUP_BY,
-            QueueDeclareOptions::default(),
-        )
+        .queue_declare(QUEUE_COMMENTS_TO_GROUP_BY, QueueDeclareOptions::default())
         .unwrap();
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
-    
+
     let mut n_processed = 0;
     let mut comments = HashMap::new();
     let mut end = false;
-    
+
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -98,12 +98,7 @@ fn main() {
                         end = true;
                     }
                     MESSAGE_OPCODE_NORMAL => {
-                        handle_comments(
-                            payload.unwrap(),
-                            &mut n_processed,
-                            &logger,
-                            &mut comments
-                        );
+                        handle_comments(payload.unwrap(), &mut n_processed, &logger, &mut comments);
                     }
                     _ => {}
                 }
@@ -119,6 +114,12 @@ fn main() {
     }
 
     logger.info("finding max".to_string());
+
+    let max = comments
+        .iter()
+        .max_by(|a, b| (a.1.1 / (a.1.0 as f32)).partial_cmp(&(b.1.1 / (b.1.0 as f32))).unwrap_or(std::cmp::Ordering::Equal));
+
+    logger.info(format!("max is: {:?}", max.unwrap()));
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())

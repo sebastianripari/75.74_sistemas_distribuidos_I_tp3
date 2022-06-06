@@ -102,7 +102,7 @@ fn main() {
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
-                            payload.unwrap(),
+                            &mut payload.unwrap(),
                             &mut n_processed,
                             &exchange,
                             &logger

@@ -14,7 +14,6 @@ use crate::{
 };
 use regex::Regex;
 
-
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
 fn publish_comments_body(payload: &Vec<CommentInboundData>, exchange: &Exchange) {
@@ -25,18 +24,11 @@ fn publish_comments_body(payload: &Vec<CommentInboundData>, exchange: &Exchange)
         .map(|comment| {
             let permalink = comment.permalink.to_string();
 
-            if let Some(captures) = regex.captures(&permalink) {
-                let post_id = captures.get(1).unwrap().as_str();
+            let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
 
-                DataCommentBody {
-                    post_id: post_id.to_string(),
-                    body: comment.body.to_string(),
-                }
-            } else {
-                DataCommentBody {
-                    post_id: "".to_string(),
-                    body: comment.body.to_string(),
-                }
+            DataCommentBody {
+                post_id: post_id.to_string(),
+                body: comment.body.to_string(),
             }
         })
         .rev()
@@ -63,18 +55,11 @@ fn publish_comments_sentiment(payload: &Vec<CommentInboundData>, exchange: &Exch
         .map(|comment| {
             let permalink = comment.permalink.to_string();
 
-            if let Some(captures) = regex.captures(&permalink) {
-                let post_id = captures.get(1).unwrap().as_str();
+            let post_id = regex.captures(&permalink).unwrap().get(1).unwrap().as_str();
 
-                DataCommentSentiment {
-                    post_id: post_id.to_string(),
-                    sentiment: comment.sentiment,
-                }
-            } else {
-                DataCommentSentiment {
-                    post_id: "".to_string(),
-                    sentiment: comment.sentiment,
-                }
+            DataCommentSentiment {
+                post_id: post_id.to_string(),
+                sentiment: comment.sentiment,
             }
         })
         .rev()
@@ -94,12 +79,19 @@ fn publish_comments_sentiment(payload: &Vec<CommentInboundData>, exchange: &Exch
 }
 
 pub fn handle_comments(
-    payload: Vec<CommentInboundData>,
+    payload: &mut Vec<CommentInboundData>,
     n: &mut usize,
     exchange: &Exchange,
     logger: &Logger,
 ) {
     *n += payload.len();
+
+    let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
+
+    payload.retain(|comment| match regex.captures(&comment.permalink) {
+        Some(_) => true,
+        None => false,
+    });
 
     publish_comments_body(&payload, exchange);
     publish_comments_sentiment(&payload, exchange);

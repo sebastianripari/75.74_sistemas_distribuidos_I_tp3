@@ -5,16 +5,17 @@ pub fn handle_comments(
     payload: Vec<DataInboundComment>,
     n: &mut usize,
     logger: &Logger,
-    comments: &mut HashMap<String, f32>,
+    comments: &mut HashMap<String, (usize, f32)>,
 ) {
     *n += payload.len();
 
     for comment in payload {
         logger.debug(format!("processing: {}", comment.post_id));
-        if let Some(sum) = comments.get_mut(&comment.post_id) {
+        if let Some((count, sum)) = comments.get_mut(&comment.post_id) {
+            *count = *count + 1;
             *sum = *sum + comment.sentiment;
         } else {
-            comments.insert(comment.post_id, comment.sentiment);
+            comments.insert(comment.post_id, (1, comment.sentiment));
         }
     }
 
