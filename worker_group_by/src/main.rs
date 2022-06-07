@@ -6,7 +6,7 @@ use messages::{
     inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
-use utils::logger::Logger;
+use utils::{logger::Logger, rabbitmq::rabbitmq_connect};
 
 mod handlers;
 mod messages;
@@ -28,43 +28,6 @@ fn logger_start() -> Logger {
     let logger = Logger::new(log_level);
 
     logger
-}
-
-fn rabbitmq_connect(logger: &Logger) -> Connection {
-    let rabbitmq_user;
-    match env::var("RABBITMQ_USER") {
-        Ok(value) => rabbitmq_user = value,
-        Err(_) => {
-            panic!("could not get rabbitmq user from env")
-        }
-    }
-
-    let rabbitmq_password;
-    match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => rabbitmq_password = value,
-        Err(_) => {
-            panic!("could not get rabbitmq password user from env")
-        }
-    }
-
-    let rabbitmq_connection;
-    match Connection::insecure_open(
-        &format!(
-            "amqp://{}:{}@rabbitmq:5672",
-            rabbitmq_user, rabbitmq_password
-        )
-        .to_owned(),
-    ) {
-        Ok(connection) => {
-            logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
-        }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
-    }
-
-    rabbitmq_connection
 }
 
 fn main() {
@@ -168,6 +131,7 @@ fn main() {
             .partial_cmp(&(b.1 .1 / (b.1 .0 as f32)))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
+    
 
     logger.info(format!("max is: {:?}", max));
 

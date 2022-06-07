@@ -7,6 +7,7 @@ use messages::{
     inbound::message_score_avg::MessageScoreAvg,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
+use utils::rabbitmq::rabbitmq_connect;
 use std::{env, thread, time::Duration};
 
 mod entities;
@@ -23,43 +24,6 @@ const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 
 // queue output
 pub const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
-
-fn rabbitmq_connect(logger: &Logger) -> Connection {
-    let rabbitmq_user;
-    match env::var("RABBITMQ_USER") {
-        Ok(value) => rabbitmq_user = value,
-        Err(_) => {
-            panic!("could not get rabbitmq user from env")
-        }
-    }
-
-    let rabbitmq_password;
-    match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => rabbitmq_password = value,
-        Err(_) => {
-            panic!("could not get rabbitmq password user from env")
-        }
-    }
-
-    let rabbitmq_connection;
-    match Connection::insecure_open(
-        &format!(
-            "amqp://{}:{}@rabbitmq:5672",
-            rabbitmq_user, rabbitmq_password
-        )
-        .to_owned(),
-    ) {
-        Ok(connection) => {
-            logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
-        }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
-    }
-
-    rabbitmq_connection
-}
 
 fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();

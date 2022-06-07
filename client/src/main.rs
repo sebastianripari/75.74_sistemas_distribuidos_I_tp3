@@ -61,6 +61,9 @@ fn main() {
     logger.info(format!("filename posts: {}", filename_posts));
     logger.info(format!("filename comments: {}", filename_comments));
 
+    thread::sleep(Duration::from_secs(20));
+    
+
     send_posts_from_file(filename_posts, &mut writer, &logger);
     send_comments_from_file(filename_comments, &mut writer, &logger);
 

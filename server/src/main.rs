@@ -12,12 +12,13 @@ use std::{
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+use utils::rabbitmq::rabbitmq_connect;
 
 use crate::utils::{
     logger::Logger,
     socket::{SocketReader, SocketWriter},
 };
-use serde_json::{json, Value};
+use serde_json::{Value};
 mod utils;
 
 const PORT_DEFAULT: &str = "12345";
@@ -77,39 +78,7 @@ fn main() {
     // wait rabbitmq
     thread::sleep(Duration::from_secs(30));
 
-    let rabbitmq_user;
-    match env::var("RABBITMQ_USER") {
-        Ok(value) => rabbitmq_user = value,
-        Err(_) => {
-            panic!("could not get rabbitmq user from env")
-        }
-    }
-
-    let rabbitmq_password;
-    match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => rabbitmq_password = value,
-        Err(_) => {
-            panic!("could not get rabbitmq password from env")
-        }
-    }
-
-    let mut rabbitmq_connection;
-    match Connection::insecure_open(
-        &format!(
-            "amqp://{}:{}@rabbitmq:5672",
-            rabbitmq_user, rabbitmq_password
-        )
-        .to_owned(),
-    ) {
-        Ok(connection) => {
-            logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
-        }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
-    }
-
+    let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
 

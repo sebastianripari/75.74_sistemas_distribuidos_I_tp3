@@ -11,6 +11,7 @@ use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_posts::handle_posts;
 use handlers::handle_posts_end::handle_post_end;
+use utils::rabbitmq::rabbitmq_connect;
 use std::{env, thread, time::Duration};
 
 mod constants;
@@ -36,43 +37,6 @@ fn logger_start() -> Logger {
     let logger = Logger::new(log_level);
 
     logger
-}
-
-fn rabbitmq_connect(logger: &Logger) -> Connection {
-    let rabbitmq_user;
-    match env::var("RABBITMQ_USER") {
-        Ok(value) => rabbitmq_user = value,
-        Err(_) => {
-            panic!("could not get rabbitmq user from env")
-        }
-    }
-
-    let rabbitmq_password;
-    match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => rabbitmq_password = value,
-        Err(_) => {
-            panic!("could not get rabbitmq password from env")
-        }
-    }
-
-    let rabbitmq_connection;
-    match Connection::insecure_open(
-        &format!(
-            "amqp://{}:{}@rabbitmq:5672",
-            rabbitmq_user, rabbitmq_password
-        )
-        .to_owned(),
-    ) {
-        Ok(connection) => {
-            logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
-        }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
-    }
-
-    rabbitmq_connection
 }
 
 fn rabbitmq_declare_queues(channel: &Channel) {

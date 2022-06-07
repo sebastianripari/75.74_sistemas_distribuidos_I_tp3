@@ -1,11 +1,12 @@
 use crate::utils::logger::Logger;
-use amiquip::{Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
 use handlers::handle_calc_avg::handle_calc_avg;
 use handlers::handle_calc_avg_end::handle_calc_avg_end;
 use messages::{
     inbound::message_scores::MessageScores,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
+use utils::rabbitmq::rabbitmq_connect;
 use std::{env, thread, time::Duration};
 
 mod handlers;
@@ -21,43 +22,6 @@ pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 // queue output
 pub const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
-
-fn rabbitmq_connect(logger: &Logger) -> Connection {
-    let rabbitmq_user;
-    match env::var("RABBITMQ_USER") {
-        Ok(value) => rabbitmq_user = value,
-        Err(_) => {
-            panic!("could not get rabbitmq user from env")
-        }
-    }
-
-    let rabbitmq_password;
-    match env::var("RABBITMQ_PASSWORD") {
-        Ok(value) => rabbitmq_password = value,
-        Err(_) => {
-            panic!("could not get rabbitmq password user from env")
-        }
-    }
-
-    let rabbitmq_connection;
-    match Connection::insecure_open(
-        &format!(
-            "amqp://{}:{}@rabbitmq:5672",
-            rabbitmq_user, rabbitmq_password
-        )
-        .to_owned(),
-    ) {
-        Ok(connection) => {
-            logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
-        }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
-    }
-
-    rabbitmq_connection
-}
 
 fn logger_start() -> Logger {
     let mut log_level = LOG_LEVEL.to_string();
