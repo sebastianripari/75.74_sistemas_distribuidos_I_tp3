@@ -82,12 +82,12 @@ fn main() {
         .queue_declare(QUEUE_POSTS_TO_GROUP_BY, QueueDeclareOptions::default())
         .unwrap();
     let consumer_posts = queue_posts.consume(ConsumerOptions::default()).unwrap();
-    
-    let queue = channel
+
+    let queue_comments = channel
         .queue_declare(QUEUE_COMMENTS_TO_GROUP_BY, QueueDeclareOptions::default())
         .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
-    
+    let consumer_comments = queue_comments.consume(ConsumerOptions::default()).unwrap();
+
     let mut end = false;
     let mut n_posts_processed = 0;
     let mut posts = HashMap::new();
@@ -108,13 +108,13 @@ fn main() {
                             payload.unwrap(),
                             &mut n_posts_processed,
                             &logger,
-                            &mut posts
+                            &mut posts,
                         );
                     }
                     _ => {}
                 }
 
-                consumer.ack(delivery).unwrap();
+                consumer_posts.ack(delivery).unwrap();
 
                 if end {
                     break;
@@ -127,7 +127,7 @@ fn main() {
     let mut n_comments_processed = 0;
     let mut comments = HashMap::new();
     end = false;
-    for message in consumer.receiver().iter() {
+    for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
@@ -145,13 +145,13 @@ fn main() {
                             &mut n_comments_processed,
                             &logger,
                             &posts,
-                            &mut comments
+                            &mut comments,
                         );
                     }
                     _ => {}
                 }
 
-                consumer.ack(delivery).unwrap();
+                consumer_comments.ack(delivery).unwrap();
 
                 if end {
                     break;
@@ -163,11 +163,13 @@ fn main() {
 
     logger.info("finding max".to_string());
 
-    let max = comments
-        .iter()
-        .max_by(|a, b| (a.1.1 / (a.1.0 as f32)).partial_cmp(&(b.1.1 / (b.1.0 as f32))).unwrap_or(std::cmp::Ordering::Equal));
+    let max = comments.iter().max_by(|a, b| {
+        (a.1 .1 / (a.1 .0 as f32))
+            .partial_cmp(&(b.1 .1 / (b.1 .0 as f32)))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
-    logger.info(format!("max is: {:?}", max.unwrap()));
+    logger.info(format!("max is: {:?}", max));
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())
