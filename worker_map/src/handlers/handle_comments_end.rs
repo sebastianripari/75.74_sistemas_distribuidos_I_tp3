@@ -31,13 +31,6 @@ pub fn publish_comments_sentiment_end(exchange: &Exchange) {
     exchange
         .publish(Publish::new(
             serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-        ))
-        .unwrap();
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
             QUEUE_COMMENTS_TO_GROUP_BY,
         ))
         .unwrap();
