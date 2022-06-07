@@ -44,6 +44,7 @@ pub fn handle_comments(
             if comment.body.to_ascii_lowercase().contains(word) {
                 logger.debug("match student".to_string());
                 publish_comments_filtered(exchange, comment.post_id.to_string());
+                break;
             }
         }
     }
