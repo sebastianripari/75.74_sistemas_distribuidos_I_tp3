@@ -161,7 +161,7 @@ fn main() {
                     _ => {}
                 }
 
-                consumer_posts.ack(delivery).unwrap();
+                consumer_comments.ack(delivery).unwrap();
 
                 if end {
                     break;
