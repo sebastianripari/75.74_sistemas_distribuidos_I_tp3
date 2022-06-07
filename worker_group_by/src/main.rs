@@ -1,38 +1,24 @@
-use std::{collections::HashMap, env, thread, time::Duration};
-
-use amiquip::{Connection, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use std::{collections::HashMap, thread, time::Duration};
+use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
     inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
-use utils::{logger::Logger, rabbitmq::rabbitmq_connect};
+use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
 
 mod handlers;
 mod messages;
 mod utils;
 
 pub const LOG_RATE: usize = 100000;
-const LOG_LEVEL: &str = "debug";
 
 // queue input
 const QUEUE_POSTS_TO_GROUP_BY: &str = "QUEUE_POSTS_TO_GROUP_BY";
 const QUEUE_COMMENTS_TO_GROUP_BY: &str = "QUEUE_COMMENTS_TO_GROUP_BY";
 
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-
-    let logger = Logger::new(log_level);
-
-    logger
-}
-
 fn main() {
-    let logger = logger_start();
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     // wait rabbit

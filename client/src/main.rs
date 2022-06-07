@@ -1,10 +1,11 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
+use utils::logger::logger_create;
+
 use crate::utils::{socket::{SocketWriter}, file::{send_posts_from_file, send_comments_from_file}, logger::Logger};
 
 const PORT_DEFAULT: u16 = 12345;
 const FILENAME_POSTS_DEFAULT: &str = "posts.csv";
 const FILENAME_COMMENTS_DEFAULT: &str = "comments.csv";
-const LOG_LEVEL: &str = "debug";
 
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
@@ -15,14 +16,8 @@ mod utils;
 mod entities;
 
 fn main() {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
+    let logger = logger_create();
     logger.info("start".to_string());
-    
 
     let mut port = PORT_DEFAULT;
     let mut filename_posts = FILENAME_POSTS_DEFAULT.to_string();

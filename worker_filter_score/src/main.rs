@@ -7,15 +7,14 @@ use messages::{
     inbound::message_score_avg::MessageScoreAvg,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
-use utils::rabbitmq::rabbitmq_connect;
-use std::{env, thread, time::Duration};
+use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
+use std::{thread, time::Duration};
 
 mod entities;
 mod handlers;
 mod messages;
 mod utils;
 
-const LOG_LEVEL: &str = "debug";
 const LOG_RATE: usize = 100000;
 
 // queue input
@@ -25,20 +24,8 @@ const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 // queue output
 pub const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
 
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-
-    let logger = Logger::new(log_level);
-
-    logger
-}
-
 fn main() {
-    let logger = logger_start();
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     // wait rabbit

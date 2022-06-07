@@ -1,4 +1,3 @@
-use crate::utils::logger::Logger;
 use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
 use handlers::handle_calc_avg::handle_calc_avg;
 use handlers::handle_calc_avg_end::handle_calc_avg_end;
@@ -6,15 +5,14 @@ use messages::{
     inbound::message_scores::MessageScores,
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
-use utils::rabbitmq::rabbitmq_connect;
-use std::{env, thread, time::Duration};
+use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
+use std::{thread, time::Duration};
 
 mod handlers;
 mod messages;
 mod utils;
 
 pub const LOG_RATE: usize = 100000;
-const LOG_LEVEL: &str = "debug";
 
 // queue input
 pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
@@ -23,20 +21,8 @@ pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
 pub const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
 pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-
-    let logger = Logger::new(log_level);
-
-    logger
-}
-
 fn main() {
-    let logger = logger_start();
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     // wait rabbit

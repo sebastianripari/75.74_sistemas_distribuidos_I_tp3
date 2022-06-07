@@ -11,8 +11,8 @@ use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_posts::handle_posts;
 use handlers::handle_posts_end::handle_post_end;
-use utils::rabbitmq::rabbitmq_connect;
-use std::{env, thread, time::Duration};
+use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
+use std::{thread, time::Duration};
 
 mod constants;
 mod entities;
@@ -28,16 +28,6 @@ const OPCODE_COMMENT_END: u8 = 3;
 
 pub const LOG_LEVEL: &str = "debug";
 pub const LOG_RATE: usize = 100000;
-
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
-    logger
-}
 
 fn rabbitmq_declare_queues(channel: &Channel) {
     for queue in [
@@ -59,8 +49,7 @@ fn rabbitmq_declare_queues(channel: &Channel) {
 }
 
 fn main() {
-    let logger = logger_start();
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     // wait rabbit

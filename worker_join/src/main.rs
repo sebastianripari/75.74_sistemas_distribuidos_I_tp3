@@ -1,13 +1,14 @@
 use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use serde::Deserialize;
-use std::{collections::HashMap, env, thread, time::Duration};
+use std::{collections::HashMap, thread, time::Duration};
 
 use crate::handlers::handle_comments::handle_comments;
 use crate::handlers::handle_posts::handle_posts;
 use crate::messages::inbound::message_comments::MessageComments;
 use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use crate::utils::logger::logger_create;
 use crate::utils::rabbitmq::rabbitmq_connect;
-use crate::{messages::inbound::message_posts::MessagePosts, utils::logger::Logger};
+use crate::{messages::inbound::message_posts::MessagePosts};
 
 mod entities;
 mod handlers;
@@ -21,27 +22,13 @@ struct Msg {
 }
 
 pub const LOG_RATE: usize = 10000;
-const LOG_LEVEL: &str = "debug";
 
 // queue input
 const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
 const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
-// queue output
-
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
-    logger
-}
-
 fn main() {
-    let logger = logger_start();
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     // wait rabbit

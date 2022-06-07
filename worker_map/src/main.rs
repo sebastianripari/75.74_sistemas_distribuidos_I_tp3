@@ -1,11 +1,11 @@
-use crate::utils::logger::Logger;
 use amiquip::{
     ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
 };
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use utils::logger::logger_create;
 use utils::rabbitmq::rabbitmq_connect;
-use std::{env, thread, time::Duration};
+use std::{thread, time::Duration};
 use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_comments::handle_comments;
 
@@ -14,7 +14,6 @@ mod utils;
 mod handlers;
 
 pub const LOG_RATE: usize = 100000;
-const LOG_LEVEL: &str = "debug";
 
 // queue input
 const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
@@ -23,18 +22,8 @@ const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
 const QUEUE_COMMENTS_TO_GROUP_BY: &str = "QUEUE_COMMENTS_TO_GROUP_BY";
 
-fn logger_start() -> Logger {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
-    logger
-}
-
 fn main() {
-    let logger = logger_start();
+    let logger = logger_create();
 
     logger.info("start".to_string());
 

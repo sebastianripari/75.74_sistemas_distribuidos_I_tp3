@@ -8,22 +8,15 @@ use std::{
     thread,
     time::Duration,
 };
-
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
-use utils::rabbitmq::rabbitmq_connect;
-
-use crate::utils::{
-    logger::Logger,
-    socket::{SocketReader, SocketWriter},
-};
+use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
+use crate::utils::{socket::{SocketReader, SocketWriter},};
 use serde_json::{Value};
 mod utils;
 
 const PORT_DEFAULT: &str = "12345";
-const LOG_LEVEL: &str = "debug";
-
 const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
 const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
@@ -55,12 +48,7 @@ fn send_to_client(c: &mut Connection) {
 }
 
 fn main() {
-    let mut log_level = LOG_LEVEL.to_string();
-    if let Ok(level) = env::var("LOG_LEVEL") {
-        log_level = level;
-    }
-    let logger = Logger::new(log_level);
-
+    let logger = logger_create();
     logger.info("start".to_string());
 
     let cleaner;

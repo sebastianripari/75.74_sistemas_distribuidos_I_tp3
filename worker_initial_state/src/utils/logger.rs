@@ -1,6 +1,9 @@
+use std::env;
+
 const LOG_LEVEL_NONE: &str = "none";
 const LOG_LEVEL_DEBUG: &str = "debug";
 const LOG_LEVEL_INFO: &str = "info";
+const LOG_LEVEL_DEFAULT: &str = LOG_LEVEL_DEBUG;
 
 #[derive(Clone)]
 pub struct Logger {
@@ -33,3 +36,12 @@ impl Logger {
     }
 }
 
+pub fn logger_create() -> Logger {
+    let mut log_level = LOG_LEVEL_DEFAULT.to_string();
+    if let Ok(level) = env::var("LOG_LEVEL") {
+        log_level = level;
+    }
+    let logger = Logger::new(log_level);
+
+    logger
+}
