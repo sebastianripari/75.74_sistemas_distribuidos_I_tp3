@@ -8,12 +8,24 @@ pub struct Comment {
     created_utc: String,
     permalink: String,
     body: String,
-    sentiment: String,
+    sentiment: f32,
     score: String
 }
 
 impl Comment {
     pub fn from_file(s: StringRecord) -> Result<Comment, String> {
+
+        let sentiment_str = s[8].to_string();
+        let sentiment;
+        match sentiment_str.parse::<f32>() {
+            Ok(value) => {
+                sentiment = value;
+            }
+            Err(_) => {
+                return Err("sentiment invalid".to_string());
+            }
+        }
+
         Ok(Comment{
             id: s[1].to_string(),
             subreddit_id: s[2].to_string(),
@@ -22,7 +34,7 @@ impl Comment {
             created_utc: s[5].to_string(),
             permalink: s[6].to_string(),
             body: s[7].to_string(),
-            sentiment: s[8].to_string(),
+            sentiment: sentiment,
             score: s[9].to_string()
         })
     }
@@ -38,7 +50,7 @@ impl Comment {
             self.created_utc.replace('\n', " "),
             self.permalink.replace('\n', " "),
             self.body.replace('\n', " "),
-            self.sentiment.replace('\n', " "),
+            self.sentiment,
             self.score.replace('\n', " ")
         )
     }
