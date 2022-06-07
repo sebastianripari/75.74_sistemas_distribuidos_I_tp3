@@ -22,8 +22,6 @@ struct Msg {
     url: String,
 }
 
-pub const LOG_RATE: usize = 10000;
-
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());

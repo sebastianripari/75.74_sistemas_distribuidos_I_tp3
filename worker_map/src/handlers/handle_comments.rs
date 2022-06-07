@@ -9,8 +9,8 @@ use crate::{
             message_comments_sentiment::{DataCommentSentiment, MessageOutboundCommentsSentiment},
         },
     },
-    utils::logger::Logger,
-    LOG_RATE, constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY}
+    utils::logger::{Logger, LOG_RATE},
+    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY}
 };
 use regex::Regex;
 

@@ -14,8 +14,6 @@ mod messages;
 mod utils;
 mod constants;
 
-pub const LOG_RATE: usize = 100000;
-
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());

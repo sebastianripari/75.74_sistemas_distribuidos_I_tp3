@@ -15,8 +15,6 @@ mod utils;
 mod handlers;
 mod constants;
 
-pub const LOG_RATE: usize = 100000;
-
 fn main() {
     let logger = logger_create();
 

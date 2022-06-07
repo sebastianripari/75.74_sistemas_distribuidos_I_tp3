@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{messages::inbound::message_posts::PostData, utils::logger::Logger, LOG_RATE};
+use crate::{messages::inbound::message_posts::PostData, utils::logger::{Logger, LOG_RATE}};
 
 pub fn handle_posts(
     payload: Vec<PostData>,

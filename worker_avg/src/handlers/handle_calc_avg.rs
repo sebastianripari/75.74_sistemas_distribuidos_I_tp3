@@ -1,4 +1,4 @@
-use crate::{utils::logger::Logger, LOG_RATE};
+use crate::{utils::logger::{Logger, LOG_RATE}};
 
 pub fn handle_calc_avg(
     scores: Vec<i32>,

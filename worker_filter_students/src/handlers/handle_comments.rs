@@ -5,8 +5,8 @@ use crate::{
         inbound::message_comments::DataInboundComment, opcodes::MESSAGE_OPCODE_NORMAL,
         outbound::message_comment::{MessageOutboundComment, DataOutboundComment},
     },
-    utils::logger::Logger,
-    LOG_RATE, constants::queues::QUEUE_COMMENTS_TO_JOIN
+    utils::logger::{Logger, LOG_RATE},
+    constants::queues::QUEUE_COMMENTS_TO_JOIN
 };
 
 const STUDENTS_WORDS: [&'static str; 5] =
