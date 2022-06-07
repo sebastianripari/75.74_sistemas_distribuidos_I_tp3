@@ -112,11 +112,11 @@ fn main() {
                     }
                 }
 
+                consumer.ack(delivery).unwrap();
+
                 if end {
                     break;
                 }
-
-                consumer.ack(delivery).unwrap();
             }
             _ => {}
         }
