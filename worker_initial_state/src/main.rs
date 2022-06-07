@@ -1,27 +1,23 @@
-use crate::{utils::logger::Logger};
+use crate::utils::logger::Logger;
 use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
+    Channel, Connection, ConsumerMessage, ConsumerOptions, Exchange, Queue, QueueDeclareOptions,
 };
-use handlers::handle_posts_end::handle_post_end;
-use handlers::handle_posts::handle_posts;
-use handlers::handle_comments_end::handle_comments_end;
+use constants::queues::{
+    AVG_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
+    QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
+    QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_JOIN,
+};
 use handlers::handle_comments::handle_comments;
-
+use handlers::handle_comments_end::handle_comments_end;
+use handlers::handle_posts::handle_posts;
+use handlers::handle_posts_end::handle_post_end;
 use std::{env, thread, time::Duration};
 
+mod constants;
 mod entities;
+mod handlers;
 mod messages;
 mod utils;
-mod handlers;
-
-// queue input
-pub const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
-
-// queue output
-pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
-pub const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
-pub const QUEUE_POSTS_TO_GROUP_BY: &str = "QUEUE_POSTS_TO_GROUP_BY";
-pub const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
 
 // msg opcodes
 const OPCODE_POST: u8 = 0;
@@ -38,7 +34,7 @@ fn logger_start() -> Logger {
         log_level = level;
     }
     let logger = Logger::new(log_level);
-    
+
     logger
 }
 
@@ -59,7 +55,7 @@ fn rabbitmq_connect(logger: &Logger) -> Connection {
         }
     }
 
-    let mut rabbitmq_connection;
+    let rabbitmq_connection;
     match Connection::insecure_open(
         &format!(
             "amqp://{}:{}@rabbitmq:5672",
@@ -68,7 +64,7 @@ fn rabbitmq_connect(logger: &Logger) -> Connection {
         .to_owned(),
     ) {
         Ok(connection) => {
-            println!("connected with rabbitmq");
+            logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
         Err(_) => {
@@ -77,6 +73,25 @@ fn rabbitmq_connect(logger: &Logger) -> Connection {
     }
 
     rabbitmq_connection
+}
+
+fn rabbitmq_declare_queues(channel: &Channel) {
+    for queue in [
+        AVG_TO_FILTER_SCORE,
+        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+        QUEUE_COMMENTS_TO_GROUP_BY,
+        QUEUE_COMMENTS_TO_JOIN,
+        QUEUE_COMMENTS_TO_MAP,
+        QUEUE_INITIAL_STATE,
+        QUEUE_POSTS_TO_AVG,
+        QUEUE_POSTS_TO_FILTER_SCORE,
+        QUEUE_POSTS_TO_GROUP_BY,
+        QUEUE_POSTS_TO_JOIN
+    ] {
+        channel
+            .queue_declare(queue, QueueDeclareOptions::default())
+            .unwrap();
+    }
 }
 
 fn main() {
@@ -90,7 +105,7 @@ fn main() {
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
     let exchange = Exchange::direct(&channel);
-
+    rabbitmq_declare_queues(&channel);
     let queue = channel
         .queue_declare(QUEUE_INITIAL_STATE, QueueDeclareOptions::default())
         .unwrap();
@@ -106,7 +121,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                
+
                 let splited: Vec<&str> = body.split('|').collect();
                 let opcode = splited[0].parse::<u8>().unwrap();
                 let payload = splited[1..].join("|");
