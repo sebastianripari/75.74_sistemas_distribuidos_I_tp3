@@ -11,14 +11,15 @@ use std::{
 use amiquip::{
     Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
+use constants::queues::{QUEUE_TO_CLIENT, QUEUE_INITIAL_STATE};
 use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
 use crate::utils::{socket::{SocketReader, SocketWriter},};
 use serde_json::{Value};
+
 mod utils;
+mod constants;
 
 const PORT_DEFAULT: &str = "12345";
-const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
-const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
     receiver_signal.recv().unwrap();

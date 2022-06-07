@@ -1,4 +1,5 @@
 use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use constants::queues::QUEUE_POSTS_TO_AVG;
 use handlers::handle_calc_avg::handle_calc_avg;
 use handlers::handle_calc_avg_end::handle_calc_avg_end;
 use messages::{
@@ -11,15 +12,9 @@ use std::{thread, time::Duration};
 mod handlers;
 mod messages;
 mod utils;
+mod constants;
 
 pub const LOG_RATE: usize = 100000;
-
-// queue input
-pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
-
-// queue output
-pub const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
-pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";
 
 fn main() {
     let logger = logger_create();

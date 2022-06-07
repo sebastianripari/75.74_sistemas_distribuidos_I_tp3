@@ -6,7 +6,7 @@ use crate::{
         outbound::message_comment::{MessageOutboundComment, DataOutboundComment},
     },
     utils::logger::Logger,
-    LOG_RATE, QUEUE_COMMENTS_TO_JOIN,
+    LOG_RATE, constants::queues::QUEUE_COMMENTS_TO_JOIN
 };
 
 const STUDENTS_WORDS: [&'static str; 5] =

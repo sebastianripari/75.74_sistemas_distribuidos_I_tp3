@@ -1,5 +1,5 @@
-use crate::utils::logger::Logger;
-use amiquip::{Connection, ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use constants::queues::{QUEUE_POSTS_TO_FILTER_SCORE, AVG_TO_FILTER_SCORE};
 use handlers::handle_posts::handle_posts;
 use handlers::handle_score_avg::handle_score_avg;
 use messages::{
@@ -14,15 +14,9 @@ mod entities;
 mod handlers;
 mod messages;
 mod utils;
+mod constants;
 
 const LOG_RATE: usize = 100000;
-
-// queue input
-const QUEUE_POSTS_TO_FILTER_SCORE: &str = "QUEUE_POSTS_TO_FILTER_SCORE";
-const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
-
-// queue output
-pub const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
 
 fn main() {
     let logger = logger_create();

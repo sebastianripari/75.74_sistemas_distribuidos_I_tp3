@@ -1,0 +1,2 @@
+pub const QUEUE_INITIAL_STATE: &str = "QUEUE_INITIAL_STATE";
+pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";

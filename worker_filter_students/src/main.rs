@@ -1,4 +1,5 @@
 use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use constants::queues::QUEUE_COMMENTS_TO_FILTER_STUDENTS;
 use messages::{
     inbound::{message_comments::MessageInboundComments},
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}
@@ -12,14 +13,9 @@ use std::{thread, time::Duration};
 mod messages;
 mod utils;
 mod handlers;
+mod constants;
 
 const LOG_RATE: usize = 100000;
-
-// queue input
-const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
-
-// queue output
-pub const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 fn main() {
     let logger = logger_create();

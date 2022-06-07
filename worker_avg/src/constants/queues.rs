@@ -1,0 +1,3 @@
+pub const QUEUE_POSTS_TO_AVG: &str = "QUEUE_POSTS_TO_AVG";
+pub const AVG_TO_FILTER_SCORE: &str = "AVG_TO_FILTER_SCORE";
+pub const QUEUE_TO_CLIENT: &str = "QUEUE_TO_CLIENT";

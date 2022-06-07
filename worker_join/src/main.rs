@@ -1,7 +1,7 @@
 use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use serde::Deserialize;
 use std::{collections::HashMap, thread, time::Duration};
-
+use crate::constants::queues::{QUEUE_POSTS_TO_JOIN, QUEUE_COMMENTS_TO_JOIN};
 use crate::handlers::handle_comments::handle_comments;
 use crate::handlers::handle_posts::handle_posts;
 use crate::messages::inbound::message_comments::MessageComments;
@@ -14,6 +14,7 @@ mod entities;
 mod handlers;
 mod messages;
 mod utils;
+mod constants;
 
 #[derive(Deserialize, Debug)]
 struct Msg {
@@ -22,10 +23,6 @@ struct Msg {
 }
 
 pub const LOG_RATE: usize = 10000;
-
-// queue input
-const QUEUE_POSTS_TO_JOIN: &str = "QUEUE_POSTS_TO_JOIN";
-const QUEUE_COMMENTS_TO_JOIN: &str = "QUEUE_COMMENTS_TO_JOIN";
 
 fn main() {
     let logger = logger_create();

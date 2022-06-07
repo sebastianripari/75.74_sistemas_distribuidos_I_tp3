@@ -10,7 +10,7 @@ use crate::{
         },
     },
     utils::logger::Logger,
-    LOG_RATE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
+    LOG_RATE, constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY}
 };
 use regex::Regex;
 

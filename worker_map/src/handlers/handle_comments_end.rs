@@ -4,8 +4,7 @@ use crate::{
     messages::{
         opcodes::MESSAGE_OPCODE_END, outbound::message_comments_body::MessageOutboundCommentsBody,
     },
-    utils::logger::Logger,
-    QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
+    utils::logger::Logger, constants::queues::{QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_FILTER_STUDENTS}
 };
 
 pub fn publish_comments_body_end(exchange: &Exchange) {

@@ -1,5 +1,6 @@
 use std::{collections::HashMap, thread, time::Duration};
 use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
     inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
@@ -10,12 +11,9 @@ use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
 mod handlers;
 mod messages;
 mod utils;
+mod constants;
 
 pub const LOG_RATE: usize = 100000;
-
-// queue input
-const QUEUE_POSTS_TO_GROUP_BY: &str = "QUEUE_POSTS_TO_GROUP_BY";
-const QUEUE_COMMENTS_TO_GROUP_BY: &str = "QUEUE_COMMENTS_TO_GROUP_BY";
 
 fn main() {
     let logger = logger_create();

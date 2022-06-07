@@ -2,11 +2,10 @@ use amiquip::{Exchange, Publish};
 
 use crate::{
     utils::logger::Logger,
-    QUEUE_TO_CLIENT, AVG_TO_FILTER_SCORE,
     messages::{
         opcodes::MESSAGE_OPCODE_NORMAL,
         outbound::message_score_avg::MessageScoreAvg
-    }
+    }, constants::queues::{AVG_TO_FILTER_SCORE, QUEUE_TO_CLIENT}
 };
 
 fn publish_score_avg(exchange: &Exchange, score_avg: f32) {

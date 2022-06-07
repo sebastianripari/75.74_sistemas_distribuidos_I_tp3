@@ -1,6 +1,7 @@
 use amiquip::{
     ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
 };
+use constants::queues::QUEUE_COMMENTS_TO_MAP;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use utils::logger::logger_create;
@@ -12,15 +13,9 @@ use handlers::handle_comments::handle_comments;
 mod messages;
 mod utils;
 mod handlers;
+mod constants;
 
 pub const LOG_RATE: usize = 100000;
-
-// queue input
-const QUEUE_COMMENTS_TO_MAP: &str = "QUEUE_COMMENTS_TO_MAP";
-
-// queue output
-const QUEUE_COMMENTS_TO_FILTER_STUDENTS: &str = "QUEUE_COMMENTS_TO_FILTER_STUDENTS";
-const QUEUE_COMMENTS_TO_GROUP_BY: &str = "QUEUE_COMMENTS_TO_GROUP_BY";
 
 fn main() {
     let logger = logger_create();

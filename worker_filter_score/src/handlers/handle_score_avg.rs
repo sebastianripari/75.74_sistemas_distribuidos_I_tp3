@@ -1,8 +1,9 @@
 use amiquip::{Exchange, Publish};
 
+use crate::constants::queues::QUEUE_POSTS_TO_JOIN;
 use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use crate::messages::outbound::message_posts::{PostData, MessagePosts};
-use crate::{entities::post::Post, utils::logger::Logger, QUEUE_POSTS_TO_JOIN};
+use crate::{entities::post::Post, utils::logger::Logger};
 
 fn publish_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
     for chunk in posts.chunks(100) {
