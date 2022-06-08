@@ -1,4 +1,4 @@
-use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use amiquip::{Exchange, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
 use std::{collections::HashMap, thread, time::Duration};
 use crate::constants::queues::{QUEUE_POSTS_TO_JOIN, QUEUE_COMMENTS_TO_JOIN};
 use crate::handlers::handle_comments::handle_comments;
@@ -24,6 +24,7 @@ fn main() {
 
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let exchange = Exchange::direct(&channel);
 
     let queue_posts_to_join = channel
         .queue_declare(QUEUE_POSTS_TO_JOIN, QueueDeclareOptions::default())
@@ -95,6 +96,7 @@ fn main() {
                             &mut n_joins,
                             &mut posts,
                             &logger,
+                            &exchange
                         );
                     }
                     _ => {}

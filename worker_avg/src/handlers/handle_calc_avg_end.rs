@@ -25,7 +25,7 @@ fn publish_score_avg(exchange: &Exchange, score_avg: f32) {
     let msg_client = MessageClient {
         opcode: MESSAGE_OPCODE_NORMAL,
         payload: Some(Data{
-            key: "score_avg".to_string(),
+            key: "posts_score_avg".to_string(),
             value: score_avg.to_string()
         })
     };

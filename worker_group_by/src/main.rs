@@ -1,10 +1,10 @@
 use std::{collections::HashMap, thread, time::Duration};
-use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
-use constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY};
+use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions, Exchange, Publish};
+use constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_TO_CLIENT};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
     inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}, outbound::message_client::{MessageClient, Data},
 };
 use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
 
@@ -22,6 +22,7 @@ fn main() {
 
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
+    let exchange = Exchange::direct(&channel);
 
     let queue_posts = channel
         .queue_declare(QUEUE_POSTS_TO_GROUP_BY, QueueDeclareOptions::default())
@@ -106,16 +107,26 @@ fn main() {
         }
     }
 
-    logger.info("finding max".to_string());
-
     let max = comments.iter().max_by(|a, b| {
         (a.1 .1 / (a.1 .0 as f32))
             .partial_cmp(&(b.1 .1 / (b.1 .0 as f32)))
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-    
 
-    logger.info(format!("max is: {:?}", max));
+    let msg = MessageClient {
+        opcode: MESSAGE_OPCODE_NORMAL,
+        payload: Some(Data {
+            key: "meme_with_best_sentiment".to_string(),
+            value: max.unwrap().1.2.to_string()
+        })
+    };
+
+    exchange
+            .publish(Publish::new(
+                serde_json::to_string(&msg).unwrap().as_bytes(),
+                QUEUE_TO_CLIENT,
+            ))
+            .unwrap();
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())

@@ -32,8 +32,7 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
                             MESSAGE_OPCODE_NORMAL => {
                                 handle(
                                     payload.unwrap(),
-                                    &mut client,
-                                    logger
+                                    &mut client
                                 );
                             }
                             _ => {}

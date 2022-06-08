@@ -1,10 +1,8 @@
-use crate::{messages::inbound::message::Data, utils::{socket::SocketWriter, logger::Logger}};
+use crate::{messages::inbound::message::Data, utils::{socket::SocketWriter}};
 
-pub fn handle(payload: Data, client: &mut SocketWriter, logger: &Logger) {
-    logger.info(format!("new msg to send a client: {:?}", payload));
-
+pub fn handle(payload: Data, client: &mut SocketWriter) {
     let key = payload.key;
     let value = payload.value;
 
-    client.send(format!("{}:{}", key, value))
+    client.send(format!("{}: {}", key, value))
 }

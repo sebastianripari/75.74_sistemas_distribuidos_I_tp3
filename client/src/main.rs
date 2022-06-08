@@ -17,8 +17,9 @@ mod entities;
 
 fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
     loop {
-        let msg = socket_reader.receive();
-        logger.info(format!("response: {}", msg.unwrap()));
+        if let Some(msg) = socket_reader.receive() {
+            logger.info(format!("response: {}", msg));
+        }
     }
 }
 
