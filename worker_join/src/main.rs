@@ -1,5 +1,4 @@
 use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
-use serde::Deserialize;
 use std::{collections::HashMap, thread, time::Duration};
 use crate::constants::queues::{QUEUE_POSTS_TO_JOIN, QUEUE_COMMENTS_TO_JOIN};
 use crate::handlers::handle_comments::handle_comments;
@@ -15,12 +14,6 @@ mod handlers;
 mod messages;
 mod utils;
 mod constants;
-
-#[derive(Deserialize, Debug)]
-struct Msg {
-    post_id: String,
-    url: String,
-}
 
 fn main() {
     let logger = logger_create();
