@@ -1,7 +1,7 @@
 use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
 use utils::logger::logger_create;
 
-use crate::utils::{socket::{SocketWriter}, file::{send_posts_from_file, send_comments_from_file}, logger::Logger};
+use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file}, logger::Logger};
 
 const PORT_DEFAULT: u16 = 12345;
 const FILENAME_POSTS_DEFAULT: &str = "posts.csv";
@@ -14,6 +14,13 @@ const OPCODE_COMMENT_END: u8 = 3;
 
 mod utils;
 mod entities;
+
+fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
+    loop {
+        let msg = socket_reader.receive();
+        logger.info(format!("response: {}", msg.unwrap()));
+    }
+}
 
 fn main() {
     let logger = logger_create();
@@ -40,13 +47,15 @@ fn main() {
 
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(172, 25, 125, 2)), port);
 
-    let mut writer;
+    let mut socket_reader;
+    let mut socket_writer;
 
     match TcpStream::connect(&address) {
         Ok(stream) => {
             println!("connected with the server");
             let stream_clone = stream.try_clone().unwrap();
-            writer = SocketWriter::new(stream_clone);
+            socket_reader = SocketReader::new(stream);
+            socket_writer = SocketWriter::new(stream_clone);
         }
         Err(err) => {
             panic!("could not connect {}", err);
@@ -57,10 +66,14 @@ fn main() {
     logger.info(format!("filename comments: {}", filename_comments));
 
     thread::sleep(Duration::from_secs(20));
-    
 
-    send_posts_from_file(filename_posts, &mut writer, &logger);
-    send_comments_from_file(filename_comments, &mut writer, &logger);
+    let logger_clone = logger.clone();
+    let receiver = thread::spawn(move || handle_receive(&mut socket_reader, &logger_clone));
+    
+    send_posts_from_file(filename_posts, &mut socket_writer, &logger);
+    send_comments_from_file(filename_comments, &mut socket_writer, &logger);
+    
+    receiver.join().unwrap();
 
     logger.info("shutdown".to_string());
 }

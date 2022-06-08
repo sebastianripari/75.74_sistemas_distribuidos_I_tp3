@@ -33,8 +33,8 @@ pub fn rabbitmq_connect(logger: &Logger) -> Connection {
             logger.info("connected with rabbitmq".to_string());
             rabbitmq_connection = connection;
         }
-        Err(_) => {
-            panic!("could not connect with rabbitmq")
+        Err(err) => {
+            panic!("could not connect with rabbitmq. Err {}", err)
         }
     }
 

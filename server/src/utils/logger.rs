@@ -16,6 +16,12 @@ impl Logger {
         }
     }
 
+    pub fn clone(&self) -> Logger {
+        Logger {
+            log_level: self.log_level.clone()
+        }
+    }
+
     pub fn debug(&self, msg: String) {
         if self.log_level == LOG_LEVEL_NONE {
             return

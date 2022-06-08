@@ -4,7 +4,8 @@ use crate::{
     utils::logger::Logger,
     messages::{
         opcodes::MESSAGE_OPCODE_NORMAL,
-        outbound::message_score_avg::MessageScoreAvg
+        outbound::message_score_avg::MessageScoreAvg,
+        outbound::message_client::{MessageClient, Data},
     }, constants::queues::{AVG_TO_FILTER_SCORE, QUEUE_TO_CLIENT}
 };
 
@@ -21,9 +22,17 @@ fn publish_score_avg(exchange: &Exchange, score_avg: f32) {
         ))
         .unwrap();
 
+    let msg_client = MessageClient {
+        opcode: MESSAGE_OPCODE_NORMAL,
+        payload: Some(Data{
+            key: "score_avg".to_string(),
+            value: score_avg.to_string()
+        })
+    };
+
     exchange
         .publish(Publish::new(
-            serde_json::to_string(&msg).unwrap().as_bytes(),
+            serde_json::to_string(&msg_client).unwrap().as_bytes(),
             QUEUE_TO_CLIENT,
         ))
         .unwrap();

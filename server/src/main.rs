@@ -8,16 +8,18 @@ use std::{
     thread,
     time::Duration,
 };
-use amiquip::{
-    Connection, ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
-};
-use constants::queues::{QUEUE_TO_CLIENT, QUEUE_INITIAL_STATE};
+use amiquip::{Exchange, Publish};
+use std::sync::mpsc;
+use constants::queues::{QUEUE_INITIAL_STATE};
 use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-use crate::utils::{socket::{SocketReader, SocketWriter},};
-use serde_json::{Value};
+use crate::utils::{socket::{SocketReader, SocketWriter}};
+use crate::client_responser::client_responser;
 
 mod utils;
 mod constants;
+mod messages;
+mod handlers;
+mod client_responser;
 
 const PORT_DEFAULT: &str = "12345";
 
@@ -25,26 +27,6 @@ fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>
     receiver_signal.recv().unwrap();
     if let Ok(mut running) = running_lock.write() {
         *running = false;
-    }
-}
-
-fn send_to_client(c: &mut Connection) {
-    let channel = c.open_channel(None).unwrap();
-    let queue_to_client = channel
-        .queue_declare(QUEUE_TO_CLIENT, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer_to_client = queue_to_client.consume(ConsumerOptions::default()).unwrap();
-
-    // send to client responses
-    for message in consumer_to_client.receiver().iter() {
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let value: Value = serde_json::from_str(&body).unwrap();
-                println!("send to client: {}", value)
-            }
-            _ => {}
-        }
     }
 }
 
@@ -64,8 +46,14 @@ fn main() {
         port = p;
     }
 
+    let (sender_clients, receiver_clients) = mpsc::channel();
+
+    let logger_clone = logger.clone();
+
     // wait rabbitmq
     thread::sleep(Duration::from_secs(30));
+
+    thread::spawn(move || client_responser(&logger_clone, receiver_clients));
 
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
@@ -87,15 +75,15 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
-    // thread::spawn(move || send_to_client(&mut rabbitmq_connection));
-
     for stream_result in listener.incoming() {
         match stream_result {
             Ok(stream) => {
                 let stream_clone = stream.try_clone().unwrap();
 
-                let (mut socket_reader, mut socket_writer) =
+                let (mut socket_reader, socket_writer) =
                     (SocketReader::new(stream), SocketWriter::new(stream_clone));
+                
+                sender_clients.send(socket_writer).unwrap();
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
@@ -103,7 +91,7 @@ fn main() {
                             .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
                             .unwrap();
                     }
-                }
+                }       
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();

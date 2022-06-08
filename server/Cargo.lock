@@ -805,6 +805,7 @@ version = "0.1.0"
 dependencies = [
  "amiquip",
  "ctrlc",
+ "serde",
  "serde_json",
 ]
 
