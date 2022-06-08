@@ -1,17 +1,18 @@
-use std::{collections::HashMap, thread, time::Duration};
-use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions, Exchange, Publish};
-use constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_TO_CLIENT};
+use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions};
+use constants::queues::{QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_POSTS_TO_GROUP_BY, QUEUE_TO_CLIENT};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
     inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}, outbound::message_client::{MessageClient, Data},
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+    outbound::message_client::{Data, MessageClient},
 };
-use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
+use std::{collections::HashMap, fs::File, io::Read, thread, time::Duration};
+use utils::{logger::logger_create, rabbitmq::rabbitmq_connect};
 
+mod constants;
 mod handlers;
 mod messages;
 mod utils;
-mod constants;
 
 fn main() {
     let logger = logger_create();
@@ -113,20 +114,22 @@ fn main() {
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
+    let url = max.unwrap().1 .2.to_string();
+
     let msg = MessageClient {
         opcode: MESSAGE_OPCODE_NORMAL,
         payload: Some(Data {
             key: "meme_with_best_sentiment".to_string(),
-            value: max.unwrap().1.2.to_string()
-        })
+            value: url,
+        }),
     };
 
     exchange
-            .publish(Publish::new(
-                serde_json::to_string(&msg).unwrap().as_bytes(),
-                QUEUE_TO_CLIENT,
-            ))
-            .unwrap();
+        .publish(Publish::new(
+            serde_json::to_string(&msg).unwrap().as_bytes(),
+            QUEUE_TO_CLIENT,
+        ))
+        .unwrap();
 
     if let Ok(_) = rabbitmq_connection.close() {
         logger.info("rabbitmq connection closed".to_string())

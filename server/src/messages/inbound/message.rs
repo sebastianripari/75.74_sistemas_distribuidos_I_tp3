@@ -1,6 +1,7 @@
 use serde::Deserialize;
+use serde_json::Value;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct Data {
     pub key: String,
     pub value: String

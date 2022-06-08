@@ -1,4 +1,4 @@
-use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env};
+use std::{net::{IpAddr, Ipv4Addr, TcpStream, SocketAddr}, time::Duration, thread, env, fs::File, io::Write};
 use utils::logger::logger_create;
 
 use crate::utils::{socket::{SocketReader, SocketWriter}, file::{send_posts_from_file, send_comments_from_file}, logger::Logger};
@@ -17,8 +17,31 @@ mod entities;
 
 fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
     loop {
-        if let Some(msg) = socket_reader.receive() {
-            logger.info(format!("response: {}", msg));
+        if let Some(key) = socket_reader.receive() {
+
+            if key == "best_students_memes_url" {
+                if let Some(value) = socket_reader.receive() {
+                    logger.info(format!("response: {}: {}", key, value));
+                }
+            }
+            if key == "posts_score_avg" {
+                if let Some(value) = socket_reader.receive() {
+                    logger.info(format!("response: {}: {}", key, value));
+                }
+            }
+            if key == "meme_with_best_sentiment" {
+                logger.info("meme_with_best_sentiment".to_string());
+                if let Some(n_str) = socket_reader.receive() {
+                    let n = n_str.parse::<usize>().unwrap();
+                    logger.info(format!("n to receive: {}", n));
+                    if let Some(value) = socket_reader.receive_bytes(n) {
+                        logger.info(format!("n received: {}", value.len()));
+                        let mut file = File::create("./downloads/seba.jpg").unwrap();
+                        file.write_all(&value).unwrap();
+                    }
+                }
+            }
+            
         }
     }
 }
@@ -66,7 +89,7 @@ fn main() {
     logger.info(format!("filename posts: {}", filename_posts));
     logger.info(format!("filename comments: {}", filename_comments));
 
-    thread::sleep(Duration::from_secs(20));
+    //thread::sleep(Duration::from_secs(20));
 
     let logger_clone = logger.clone();
     let receiver = thread::spawn(move || handle_receive(&mut socket_reader, &logger_clone));

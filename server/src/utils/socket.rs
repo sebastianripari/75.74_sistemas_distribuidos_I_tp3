@@ -1,15 +1,16 @@
-
-   
-use std::{net::TcpStream, io::{self, BufRead, Write}};
+use std::{
+    io::{self, BufRead, Write},
+    net::TcpStream,
+};
 
 pub struct SocketReader {
-    pub reader: io::BufReader<TcpStream>
+    pub reader: io::BufReader<TcpStream>,
 }
 
 impl SocketReader {
     pub fn new(stream: TcpStream) -> SocketReader {
         SocketReader {
-            reader: io::BufReader::new(stream.try_clone().unwrap())
+            reader: io::BufReader::new(stream.try_clone().unwrap()),
         }
     }
 
@@ -18,11 +19,11 @@ impl SocketReader {
         match self.reader.read_line(&mut mensaje) {
             Err(err) => {
                 println!("{}", err);
-                return None
+                return None;
             }
             Ok(bytes) => {
                 if bytes == 0 {
-                    return None
+                    return None;
                 } else {
                     mensaje.pop();
                     return Some(mensaje);
@@ -34,12 +35,34 @@ impl SocketReader {
 
 pub struct SocketWriter {
     pub writer: io::LineWriter<TcpStream>,
+    pub socket: TcpStream,
 }
 
 impl SocketWriter {
     pub fn new(stream: TcpStream) -> SocketWriter {
         SocketWriter {
-            writer: io::LineWriter::new(stream)
+            writer: io::LineWriter::new(stream.try_clone().unwrap()),
+            socket: stream,
+        }
+    }
+
+    pub fn send_bytes(&mut self, msg: &[u8]) {
+        match self.socket.write_all(msg) {
+            Err(_) => {
+                println!("err");
+            }
+            Ok(_) => {
+                println!("ok");
+            }
+        }
+
+        match self.socket.flush() {
+            Err(_) => {
+                println!("err");
+            }
+            Ok(_) => {
+                println!("ok");
+            }
         }
     }
 
