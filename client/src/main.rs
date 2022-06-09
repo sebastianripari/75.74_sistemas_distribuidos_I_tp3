@@ -31,16 +31,16 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
             }
             if key == "meme_with_best_sentiment" {
                 logger.info("meme_with_best_sentiment".to_string());
-                if let Some(n_str) = socket_reader.receive() {
-                    let n = n_str.parse::<usize>().unwrap();
-                    logger.info(format!("n to receive: {}", n));
-                    if let Some(value) = socket_reader.receive_bytes(n) {
-                        let mut file = File::create("./downloads/seba.jpg").unwrap();
-                        file.write_all(&value).unwrap();
+                if let Some(filename) = socket_reader.receive() {
+                    if let Some(n_str) = socket_reader.receive() {
+                        let n = n_str.parse::<usize>().unwrap();
+                        if let Some(value) = socket_reader.receive_bytes(n) {
+                            let mut file = File::create(format!("./downloads/{}.jpg", filename)).unwrap();
+                            file.write_all(&value).unwrap();
+                        }
                     }
                 }
             }
-            
         }
     }
 }

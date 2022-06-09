@@ -19,12 +19,19 @@ pub fn handle(payload: Data, client: &mut SocketWriter, logger: &Logger) {
     }
 
     if key == "meme_with_best_sentiment" {
-        let value = payload.value;
-        logger.info(format!("url to download: {}", value));
-        if let Ok(response) = reqwest::blocking::get(value) {
+        let url = payload.value;
+        logger.info(format!("url to download: {}", url));
+
+        let url_clone = url.clone();
+        let mut url_splited: Vec<&str> = url_clone.split('/').collect();
+        let filename = url_splited.pop().unwrap();
+
+        logger.info(format!("filename: {}", filename));
+        if let Ok(response) = reqwest::blocking::get(url) {
             logger.info("image downloaded".to_string());
             if let Ok(response_bytes) = response.bytes() {
                 client.send(key.clone());
+                client.send(filename.to_string());
                 client.send(response_bytes.len().to_string());
                 client.send_bytes(&response_bytes);
             }
