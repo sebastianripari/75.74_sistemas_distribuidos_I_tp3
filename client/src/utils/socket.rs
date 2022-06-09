@@ -25,8 +25,6 @@ impl SocketReader {
         loop {
             let received: Vec<u8> = self.reader.fill_buf().unwrap().to_vec();
 
-            println!("n received: {}", n_received);
-
             v.extend(received.clone());
 
             n_received = n_received + received.len();

@@ -35,7 +35,6 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
                     let n = n_str.parse::<usize>().unwrap();
                     logger.info(format!("n to receive: {}", n));
                     if let Some(value) = socket_reader.receive_bytes(n) {
-                        logger.info(format!("n received: {}", value.len()));
                         let mut file = File::create("./downloads/seba.jpg").unwrap();
                         file.write_all(&value).unwrap();
                     }
