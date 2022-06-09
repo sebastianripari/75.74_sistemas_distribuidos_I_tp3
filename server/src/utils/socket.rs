@@ -47,23 +47,7 @@ impl SocketWriter {
     }
 
     pub fn send_bytes(&mut self, msg: &[u8]) {
-        match self.socket.write_all(msg) {
-            Err(_) => {
-                println!("err");
-            }
-            Ok(_) => {
-                println!("ok");
-            }
-        }
-
-        match self.socket.flush() {
-            Err(_) => {
-                println!("err");
-            }
-            Ok(_) => {
-                println!("ok");
-            }
-        }
+        self.socket.write_all(msg).unwrap();
     }
 
     pub fn send(&mut self, mensaje: String) {
