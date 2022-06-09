@@ -10,6 +10,10 @@ pub fn handle_comments(
 ) {
     *n += payload.len();
 
+    if payload.len() == 0 {
+        return
+    }
+
     for comment in payload {
         logger.debug(format!("processing: {}", comment.post_id));
         if let Some(url) = posts.get(&comment.post_id) {
@@ -24,7 +28,6 @@ pub fn handle_comments(
         }
     }
 
-    if *n % LOG_RATE == 0 {
-        logger.info(format!("n processed: {}", n))
-    }
+    logger.info(format!("n comments processed: {}", n))
+
 }
