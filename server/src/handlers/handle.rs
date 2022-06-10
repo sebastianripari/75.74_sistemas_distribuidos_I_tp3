@@ -48,6 +48,6 @@ pub fn handle(
             }
         };
 
-        meme_with_best_sentiment_handled = true;
+        *meme_with_best_sentiment_handled = true;
     }
 }
