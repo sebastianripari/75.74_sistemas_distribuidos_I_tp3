@@ -12,7 +12,7 @@ use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_posts::handle_posts;
 use handlers::handle_posts_end::handle_post_end;
 use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-use std::{thread, time::Duration};
+use std::{thread, time::Duration, env};
 
 mod constants;
 mod entities;
@@ -52,6 +52,11 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
+    let mut n_consumers = 1;
+    if let Ok(value) = env::var("N_CONSUMERS") {
+        n_consumers = value.parse::<usize>().unwrap();
+    }
+
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
@@ -85,7 +90,7 @@ fn main() {
                         posts_end = true;
                     }
                     OPCODE_COMMENT_END => {
-                        handle_comments_end(&exchange, logger.clone());
+                        handle_comments_end(&exchange, logger.clone(), n_consumers);
                         comments_end = true;
                     }
                     OPCODE_POST => {
