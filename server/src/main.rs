@@ -22,9 +22,7 @@ mod messages;
 mod utils;
 
 const PORT_DEFAULT: &str = "12345";
-const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT_END: u8 = 3;
-const OPCODE_END: u8 = 4;
 
 fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
     receiver_signal.recv().unwrap();
@@ -39,6 +37,7 @@ fn main() {
 
     let cleaner;
     let (sender_signal, receiver_signal) = channel();
+    let sender_signal_clone = sender_signal.clone();
     let running_lock = Arc::new(RwLock::new(true));
     let mut running_lock_clone = running_lock.clone();
     ctrlc::set_handler(move || sender_signal.send(()).unwrap()).unwrap();
@@ -61,7 +60,7 @@ fn main() {
     // wait rabbitmq
     thread::sleep(Duration::from_secs(30));
 
-    thread::spawn(move || client_responser(&logger_clone, receiver_clients));
+    let client_handler = thread::spawn(move || client_responser(&logger_clone, receiver_clients));
 
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
     let channel = rabbitmq_connection.open_channel(None).unwrap();
@@ -114,9 +113,12 @@ fn main() {
                                     ))
                                     .unwrap();
                             }
+                            sender_signal_clone.send(()).unwrap();
+                            break;
                         }
                     }
                 }
+                break;
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();
