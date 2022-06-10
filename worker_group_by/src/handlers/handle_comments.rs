@@ -28,6 +28,8 @@ pub fn handle_comments(
         }
     }
 
-    logger.info(format!("n comments processed: {}", n))
-
+    if *n % 10000 < 10 {
+        logger.info(format!("n comments processed: {}", n))
+    }
+    
 }
