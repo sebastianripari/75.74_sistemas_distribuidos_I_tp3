@@ -6,6 +6,7 @@ use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use utils::logger::logger_create;
 use utils::rabbitmq::rabbitmq_connect;
+use std::env;
 use std::{thread, time::Duration};
 use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_comments::handle_comments;
@@ -20,6 +21,11 @@ fn main() {
 
     logger.info("start".to_string());
 
+    let mut n_producers = 1;
+    if let Ok(value) = env::var("N_PRODUCERS") {
+        n_producers = value.parse::<usize>().unwrap();
+    }
+
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
@@ -32,7 +38,7 @@ fn main() {
     let exchange = Exchange::direct(&channel);
 
     let mut n_processed = 0;
-    let mut end = false;
+    let mut ends = 0;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -43,8 +49,11 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        handle_comments_end(&exchange, &logger);
-                        end = true;
+                        ends += 1;
+                        logger.info(format!("current ends: {}, ends to reach: {}", ends, n_producers));
+                        if ends == n_producers {
+                            handle_comments_end(&exchange, &logger);
+                        }
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
@@ -60,7 +69,7 @@ fn main() {
 
                 consumer.ack(delivery).unwrap();
 
-                if end {
+                if ends == n_producers {
                     break;
                 }
             }
