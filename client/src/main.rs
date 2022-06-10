@@ -16,6 +16,11 @@ mod utils;
 mod entities;
 
 fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
+
+    let mut best_students_memes_url_received = false;
+    let mut posts_score_avg_received = false;
+    let mut meme_with_best_sentiment_received = false;
+
     loop {
         if let Some(key) = socket_reader.receive() {
 
@@ -23,11 +28,13 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
                 if let Some(value) = socket_reader.receive() {
                     logger.info(format!("response: {}: {}", key, value));
                 }
+                best_students_memes_url_received = true
             }
             if key == "posts_score_avg" {
                 if let Some(value) = socket_reader.receive() {
                     logger.info(format!("response: {}: {}", key, value));
                 }
+                posts_score_avg_received = true;
             }
             if key == "meme_with_best_sentiment" {
                 logger.info("meme_with_best_sentiment".to_string());
@@ -40,6 +47,11 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
                         }
                     }
                 }
+                meme_with_best_sentiment_received = true;
+            }
+
+            if best_students_memes_url_received && posts_score_avg_received && meme_with_best_sentiment_received {
+                break;
             }
         }
     }
