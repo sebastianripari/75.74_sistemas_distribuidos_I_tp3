@@ -1,3 +1,8 @@
+use crate::client_responser::client_responser;
+use crate::utils::socket::{SocketReader, SocketWriter};
+use amiquip::{Exchange, Publish};
+use constants::queues::QUEUE_INITIAL_STATE;
+use std::sync::mpsc;
 use std::{
     env,
     net::TcpListener,
@@ -8,20 +13,17 @@ use std::{
     thread,
     time::Duration,
 };
-use amiquip::{Exchange, Publish};
-use std::sync::mpsc;
-use constants::queues::{QUEUE_INITIAL_STATE};
-use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-use crate::utils::{socket::{SocketReader, SocketWriter}};
-use crate::client_responser::client_responser;
+use utils::{logger::logger_create, rabbitmq::rabbitmq_connect};
 
-mod utils;
-mod constants;
-mod messages;
-mod handlers;
 mod client_responser;
+mod constants;
+mod handlers;
+mod messages;
+mod utils;
 
 const PORT_DEFAULT: &str = "12345";
+const OPCODE_POST_END: u8 = 1;
+const OPCODE_COMMENT_END: u8 = 3;
 
 fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
     receiver_signal.recv().unwrap();
@@ -44,6 +46,11 @@ fn main() {
     let mut port = PORT_DEFAULT.to_string();
     if let Ok(p) = env::var("SERVER_PORT") {
         port = p;
+    }
+
+    let mut n_consumers = 0;
+    if let Ok(value) = env::var("N_CONSUMERS") {
+        n_consumers = value.parse::<usize>().unwrap();
     }
 
     let (sender_clients, receiver_clients) = mpsc::channel();
@@ -75,6 +82,9 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
+    let mut posts_end = false;
+    let mut comments_end = false;
+
     for stream_result in listener.incoming() {
         match stream_result {
             Ok(stream) => {
@@ -82,16 +92,33 @@ fn main() {
 
                 let (mut socket_reader, socket_writer) =
                     (SocketReader::new(stream), SocketWriter::new(stream_clone));
-                
+
                 sender_clients.send(socket_writer).unwrap();
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-                        exchange
-                            .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
-                            .unwrap();
+
+                        if msg == format!("{}|", OPCODE_POST_END) {
+                            posts_end = true;
+                        }
+                        if msg == format!("{}|", OPCODE_COMMENT_END) {
+                            comments_end = true;
+                        }
+
+                        if posts_end && comments_end {
+                            for _ in 0..n_consumers {
+                                exchange
+                                    .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
+                                    .unwrap();
+                            }
+                            break;
+                        } else {
+                            exchange
+                                .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
+                                .unwrap();
+                        }
                     }
-                }       
+                }
             }
             Err(_) => {
                 running_lock_clone = running_lock.clone();

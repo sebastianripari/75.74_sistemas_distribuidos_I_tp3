@@ -9,6 +9,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - N_CONSUMERS=2
     entrypoint: /tp2/target/release/server
     networks:
       - tp2_net
