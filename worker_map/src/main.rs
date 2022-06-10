@@ -5,7 +5,7 @@ use constants::queues::QUEUE_COMMENTS_TO_MAP;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use utils::logger::logger_create;
-use utils::rabbitmq::rabbitmq_connect;
+use utils::rabbitmq::{rabbitmq_connect, rabbitmq_create_channel, rabbitmq_declare_queue, rabbitmq_create_consumer, rabbitmq_create_exchange};
 use std::env;
 use std::{thread, time::Duration};
 use handlers::handle_comments_end::handle_comments_end;
@@ -16,26 +16,37 @@ mod utils;
 mod handlers;
 mod constants;
 
-fn main() {
-    let logger = logger_create();
-
-    logger.info("start".to_string());
-
+fn get_n_producers() -> usize {
     let mut n_producers = 1;
     if let Ok(value) = env::var("N_PRODUCERS") {
         n_producers = value.parse::<usize>().unwrap();
     }
+    n_producers
+}
+
+fn get_n_consumers() -> usize {
+    let mut n_consumers = 1;
+    if let Ok(value) = env::var("N_CONSUMERS") {
+        n_consumers = value.parse::<usize>().unwrap();
+    }
+    n_consumers
+}
+
+fn main() {
+    let logger = logger_create();
+    logger.info("start".to_string());
+
+    let n_producers = get_n_producers();
+    let n_consumers = get_n_consumers();
 
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
     let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue = channel
-        .queue_declare(QUEUE_COMMENTS_TO_MAP, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
-    let exchange = Exchange::direct(&channel);
+    let channel = rabbitmq_create_channel(&mut rabbitmq_connection);
+    let queue = rabbitmq_declare_queue(&channel, QUEUE_COMMENTS_TO_MAP);
+    let consumer = rabbitmq_create_consumer(&queue);
+    let exchange = rabbitmq_create_exchange(&channel);
 
     let mut n_processed = 0;
     let mut ends = 0;
