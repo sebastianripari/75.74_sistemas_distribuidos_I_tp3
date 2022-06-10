@@ -138,6 +138,10 @@ fn main() {
         logger.info("rabbitmq connection closed".to_string())
     }
 
+    if let Ok(_) = client_handler.join() {
+        logger.info("client handler closed".to_string());
+    }
+
     if let Ok(_) = cleaner.join() {
         logger.info("cleaner stop".to_string())
     }

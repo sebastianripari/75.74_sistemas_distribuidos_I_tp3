@@ -1,21 +1,32 @@
 use std::io::Read;
 
-use crate::{utils::{socket::SocketWriter, logger::Logger}, messages::inbound::message::{Data}};
+use crate::{
+    messages::inbound::message::Data,
+    utils::{logger::Logger, socket::SocketWriter},
+};
 
-pub fn handle(payload: Data, client: &mut SocketWriter, logger: &Logger) {
-
+pub fn handle(
+    payload: Data,
+    client: &mut SocketWriter,
+    logger: &Logger,
+    best_students_memes_url_handled: &mut bool,
+    posts_score_avg_handled: &mut bool,
+    meme_with_best_sentiment_handled: &mut bool
+) {
     let key = payload.key;
 
     if key == "best_students_memes_url" {
         let value = payload.value.to_string();
         client.send(key.clone());
         client.send(value);
+        *best_students_memes_url_handled = true;
     }
 
     if key == "posts_score_avg" {
         let value = payload.value.to_string();
         client.send(key.clone());
         client.send(value);
+        *posts_score_avg_handled = true;
     }
 
     if key == "meme_with_best_sentiment" {
@@ -36,5 +47,7 @@ pub fn handle(payload: Data, client: &mut SocketWriter, logger: &Logger) {
                 client.send_bytes(&response_bytes);
             }
         };
+
+        meme_with_best_sentiment_handled = true;
     }
 }
