@@ -52,6 +52,11 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
+    let mut n_producers = 1;
+    if let Ok(value) = env::var("N_PRODUCERS") {
+        n_producers = value.parse::<usize>().unwrap()
+    }
+
     let mut n_consumers = 1;
     if let Ok(value) = env::var("N_CONSUMERS") {
         n_consumers = value.parse::<usize>().unwrap();
@@ -72,14 +77,12 @@ fn main() {
     let mut n_post_received: usize = 0;
     let mut n_comment_received: usize = 0;
 
-    let mut posts_end = false;
-    let mut comments_end = false;
+    let mut ends = 0;
 
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-
                 let splited: Vec<&str> = body.split('|').collect();
                 let opcode = splited[0].parse::<u8>().unwrap();
                 let payload = splited[1..].join("|");
@@ -87,11 +90,14 @@ fn main() {
                 match opcode {
                     OPCODE_POST_END => {
                         handle_post_end(&exchange, logger.clone());
-                        posts_end = true;
                     }
                     OPCODE_COMMENT_END => {
-                        handle_comments_end(&exchange, logger.clone(), n_consumers);
-                        comments_end = true;
+                        ends += 1;
+                        if ends == n_producers {
+                            logger.info("doing end".to_string());
+                            handle_comments_end(&exchange, logger.clone(), n_consumers);
+                            break;
+                        }
                     }
                     OPCODE_POST => {
                         handle_posts(
@@ -113,11 +119,6 @@ fn main() {
                 }
 
                 consumer.ack(delivery).unwrap();
-
-                if posts_end && comments_end {
-                    logger.info("doing end".to_string());
-                    break;
-                }
             }
             _ => {}
         }

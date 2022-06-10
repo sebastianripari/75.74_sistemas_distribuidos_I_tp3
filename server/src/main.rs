@@ -24,6 +24,7 @@ mod utils;
 const PORT_DEFAULT: &str = "12345";
 const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT_END: u8 = 3;
+const OPCODE_END: u8 = 4;
 
 fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
     receiver_signal.recv().unwrap();
@@ -48,7 +49,7 @@ fn main() {
         port = p;
     }
 
-    let mut n_consumers = 0;
+    let mut n_consumers = 1;
     if let Ok(value) = env::var("N_CONSUMERS") {
         n_consumers = value.parse::<usize>().unwrap();
     }
@@ -82,8 +83,7 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
-    let mut posts_end = false;
-    let mut comments_end = false;
+    let mut end = false;
 
     for stream_result in listener.incoming() {
         match stream_result {
@@ -97,25 +97,23 @@ fn main() {
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
+                        exchange
+                            .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
+                            .unwrap();
 
-                        if msg == format!("{}|", OPCODE_POST_END) {
-                            posts_end = true;
-                        }
                         if msg == format!("{}|", OPCODE_COMMENT_END) {
-                            comments_end = true;
+                            end = true;
                         }
 
-                        if posts_end && comments_end {
+                        if end {
                             for _ in 0..n_consumers {
                                 exchange
-                                    .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
+                                    .publish(Publish::new(
+                                        format!("{}|", OPCODE_COMMENT_END).as_bytes(),
+                                        QUEUE_INITIAL_STATE,
+                                    ))
                                     .unwrap();
                             }
-                            break;
-                        } else {
-                            exchange
-                                .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
-                                .unwrap();
                         }
                     }
                 }
