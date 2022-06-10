@@ -20,7 +20,6 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
     let consumer = queue.consume(ConsumerOptions::default()).unwrap();
 
     if let Ok(mut client) = clients.recv() {
-        let mut end = false;
 
         let mut best_students_memes_url_handled = false;
         let mut posts_score_avg_handled = false;
@@ -60,5 +59,9 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
                 _ => {}
             }
         }
+    }
+
+    if let Ok(_) = rabbitmq_connection.close() {
+        logger.info("rabbitmq connection closed".to_string())
     }
 }
