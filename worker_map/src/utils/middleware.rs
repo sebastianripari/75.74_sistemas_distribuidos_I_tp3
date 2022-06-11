@@ -1,6 +1,8 @@
 use super::logger::Logger;
-use amiquip::{Channel, Connection, QueueDeclareOptions, Consumer, ConsumerOptions, Queue, Exchange};
-use std::env;
+use amiquip::{
+    Channel, Connection, Consumer, ConsumerOptions, Exchange, Queue, QueueDeclareOptions,
+};
+use std::{env, thread, time::Duration};
 
 /* Middleware */
 
@@ -39,10 +41,22 @@ fn get_n_consumers() -> usize {
 }
 
 pub fn middleware_connect(logger: &Logger) -> Connection {
+    loop {
+        match middleware_connect_(&logger) {
+            Ok(value) => {
+                return value;
+            }
+            Err(_) => {
+                thread::sleep(Duration::from_secs(1));
+            }
+        }
+    }
+}
+
+pub fn middleware_connect_(logger: &Logger) -> Result<Connection, ()> {
     let rabbitmq_user = get_rabbitmq_user();
     let rabbitmq_password = get_rabbitmq_password();
 
-    let rabbitmq_connection;
     match Connection::insecure_open(
         &format!(
             "amqp://{}:{}@rabbitmq:5672",
@@ -52,14 +66,13 @@ pub fn middleware_connect(logger: &Logger) -> Connection {
     ) {
         Ok(connection) => {
             logger.info("connected with rabbitmq".to_string());
-            rabbitmq_connection = connection;
+            return Ok(connection);
         }
         Err(_) => {
-            panic!("could not connect with rabbitmq")
-        }
+            logger.debug("could not connect with rabbitmq".to_string());
+            return Err(());
+        },
     }
-
-    rabbitmq_connection
 }
 
 pub fn middleware_create_channel(connection: &mut Connection) -> Channel {

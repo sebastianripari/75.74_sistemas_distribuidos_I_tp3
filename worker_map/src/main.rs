@@ -4,9 +4,11 @@ use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_comments_end;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
-use utils::middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, middleware_end_reached};
-use std::{thread, time::Duration};
 use utils::logger::logger_create;
+use utils::middleware::{
+    middleware_connect, middleware_create_channel, middleware_create_consumer,
+    middleware_create_exchange, middleware_declare_queue, middleware_end_reached,
+};
 
 mod constants;
 mod handlers;
@@ -16,9 +18,6 @@ mod utils;
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
-
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
 
     let mut connection = middleware_connect(&logger);
     let channel = middleware_create_channel(&mut connection);
