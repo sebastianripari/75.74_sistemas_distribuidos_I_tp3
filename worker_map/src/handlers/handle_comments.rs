@@ -1,25 +1,26 @@
-use amiquip::{Exchange, Publish};
+use amiquip::Exchange;
 
 use crate::{
+    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY},
     messages::{
-        inbound::message_comments::CommentInboundData,
-        opcodes::MESSAGE_OPCODE_NORMAL,
+        inbound::data_comments_body_sentiment::DataCommentBodySentiment,
         outbound::{
-            message_comments_body::{DataCommentBody, MessageOutboundCommentsBody},
-            message_comments_sentiment::{DataCommentSentiment, MessageOutboundCommentsSentiment},
+            data_comments_body::{DataCommentBody, VecDataCommentBody}, data_comments_sentiment::DataCommentSentiment,
         },
     },
-    utils::logger::{Logger, LOG_RATE},
-    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY}
+    utils::{
+        logger::{Logger, LOG_RATE},
+        middleware::middleware_send_msg,
+    },
 };
 use regex::Regex;
 
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
-fn publish_comments_body(payload: &Vec<CommentInboundData>, exchange: &Exchange) {
+fn publish_comments_body(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
-    let payload_comments_body: Vec<DataCommentBody> = payload
+    let payload_comments_body: VecDataCommentBody = payload
         .iter()
         .map(|comment| {
             let permalink = comment.permalink.to_string();
@@ -34,20 +35,14 @@ fn publish_comments_body(payload: &Vec<CommentInboundData>, exchange: &Exchange)
         .rev()
         .collect();
 
-    let msg_comments = MessageOutboundCommentsBody {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload_comments_body),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_comments).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-        ))
-        .unwrap();
+    middleware_send_msg(
+        exchange,
+        &payload_comments_body,
+        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+    )
 }
 
-fn publish_comments_sentiment(payload: &Vec<CommentInboundData>, exchange: &Exchange) {
+fn publish_comments_sentiment(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
     let payload_comments_sentiment: Vec<DataCommentSentiment> = payload
@@ -65,21 +60,15 @@ fn publish_comments_sentiment(payload: &Vec<CommentInboundData>, exchange: &Exch
         .rev()
         .collect();
 
-    let msg_comments = MessageOutboundCommentsSentiment {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload_comments_sentiment),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_comments).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_GROUP_BY,
-        ))
-        .unwrap();
+    middleware_send_msg(
+        exchange,
+        &payload_comments_sentiment,
+        QUEUE_COMMENTS_TO_GROUP_BY,
+    )
 }
 
 pub fn handle_comments(
-    payload: &mut Vec<CommentInboundData>,
+    payload: &mut Vec<DataCommentBodySentiment>,
     n: &mut usize,
     exchange: &Exchange,
     logger: &Logger,

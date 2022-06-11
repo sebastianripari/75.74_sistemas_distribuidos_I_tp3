@@ -1,8 +1,10 @@
+use crate::messages::opcodes::MESSAGE_OPCODE_NORMAL;
+
 use super::logger::Logger;
 use amiquip::{
     Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, Queue, QueueDeclareOptions,
 };
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::{env, thread, time::Duration};
 
 /*
@@ -108,11 +110,23 @@ pub fn middleware_create_exchange(channel: &Channel) -> Exchange {
     Exchange::direct(&channel)
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Message<T: Serialize> {
+    pub opcode: u8,
+    pub payload: Option<T>
+}
+
 // send message to other process, pushing to a queue
-pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, msg: T, queue_name: &str) {
+pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue_name: &str) {
+
+    let message = Message {
+        opcode: MESSAGE_OPCODE_NORMAL,
+        payload: Some(payload),
+    };
+
     exchange
         .publish(Publish::new(
-            serde_json::to_string(&msg).unwrap().as_bytes(),
+            serde_json::to_string(&message).unwrap().as_bytes(),
             queue_name,
         ))
         .unwrap();
@@ -128,11 +142,16 @@ pub fn middleware_end_reached(n_end: &mut usize) -> bool {
 }
 
 // send end to the consumer
-pub fn middleware_consumer_end<T: Serialize>(exchange: &Exchange, queue_name: &str, msg_end: T) {
+pub fn middleware_consumer_end(exchange: &Exchange, queue_name: &str) {
     let n_consumers = get_n_consumers();
 
+    let message: Message<()> = Message {
+        opcode: MESSAGE_OPCODE_NORMAL,
+        payload: None,
+    };
+
     for _ in 0..n_consumers {
-        middleware_send_msg(exchange, &msg_end, queue_name);
+        middleware_send_msg(exchange, &message, queue_name);
     }
 }
 
