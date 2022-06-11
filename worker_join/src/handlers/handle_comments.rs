@@ -1,16 +1,15 @@
 use std::collections::HashMap;
-use amiquip::{Publish, Exchange};
+use amiquip::{Exchange};
 use crate::{
     messages::{
-        inbound::message_comments::Data,
-        opcodes::MESSAGE_OPCODE_NORMAL,
-        outbound::message_client::{DataOutbound, MessageClient},
+       inbound::data_comment::DataComment,
+       outbound::data_post_url::DataPostUrl
     },
-    utils::logger::{Logger, LOG_RATE}, constants::queues::QUEUE_TO_CLIENT,
+    utils::{logger::{Logger, LOG_RATE}, middleware::middleware_send_msg}, constants::queues::QUEUE_TO_CLIENT,
 };
 
 pub fn handle_comments(
-    payload: Data,
+    payload: DataComment,
     n: &mut usize,
     n_joins: &mut usize,
     posts: &mut HashMap<String, String>,
@@ -25,20 +24,12 @@ pub fn handle_comments(
             payload.post_id, post_url
         ));
 
-        let msg = MessageClient {
-            opcode: MESSAGE_OPCODE_NORMAL,
-            payload: Some(DataOutbound {
-                key: "best_students_memes_url".to_string(),
-                value: post_url.to_string(),
-            }),
+        let payload = DataPostUrl {
+            key: "best_students_memes_url".to_string(),
+            value: post_url.to_string(),
         };
 
-        exchange
-            .publish(Publish::new(
-                serde_json::to_string(&msg).unwrap().as_bytes(),
-                QUEUE_TO_CLIENT,
-            ))
-            .unwrap();
+        middleware_send_msg(exchange, &payload, QUEUE_TO_CLIENT);
 
         *n_joins += 1;
         if *n_joins % 100 == 0 {

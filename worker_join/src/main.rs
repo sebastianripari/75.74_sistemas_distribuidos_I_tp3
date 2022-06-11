@@ -1,13 +1,13 @@
-use amiquip::{Exchange, ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
-use std::{collections::HashMap, thread, time::Duration};
+use amiquip::{ConsumerMessage};
+use std::{collections::HashMap};
 use crate::constants::queues::{QUEUE_POSTS_TO_JOIN, QUEUE_COMMENTS_TO_JOIN};
 use crate::handlers::handle_comments::handle_comments;
 use crate::handlers::handle_posts::handle_posts;
-use crate::messages::inbound::message_comments::MessageComments;
+use crate::messages::inbound::data_post_url::DataPostUrl;
+use crate::messages::inbound::data_comment::DataComment;
 use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use crate::utils::logger::logger_create;
-use crate::utils::rabbitmq::rabbitmq_connect;
-use crate::{messages::inbound::message_posts::MessagePosts};
+use crate::utils::middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message};
 
 mod entities;
 mod handlers;
@@ -19,26 +19,13 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let exchange = Exchange::direct(&channel);
-
-    let queue_posts_to_join = channel
-        .queue_declare(QUEUE_POSTS_TO_JOIN, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer_posts = queue_posts_to_join
-        .consume(ConsumerOptions::default())
-        .unwrap();
-
-    let queue_comments_to_join = channel
-        .queue_declare(QUEUE_COMMENTS_TO_JOIN, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer_comments = queue_comments_to_join
-        .consume(ConsumerOptions::default())
-        .unwrap();
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue_posts = middleware_declare_queue(&channel, QUEUE_POSTS_TO_JOIN);
+    let queue_comments = middleware_declare_queue(&channel, QUEUE_COMMENTS_TO_JOIN);
+    let consumer_posts = middleware_create_consumer(&queue_posts);
+    let consumer_comments = middleware_create_consumer(&queue_comments);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut n_post_processed = 0;
     let mut posts = HashMap::new();
@@ -47,7 +34,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessagePosts = serde_json::from_str(&body).unwrap();
+                let msg: Message<Vec<DataPostUrl>> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
@@ -79,7 +66,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageComments = serde_json::from_str(&body).unwrap();
+                let msg: Message<DataComment> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
@@ -112,9 +99,7 @@ fn main() {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        println!("rabbitmq connection closed")
-    }
+    connection.close().unwrap();
 
     println!("worker join shutdown");
 }
