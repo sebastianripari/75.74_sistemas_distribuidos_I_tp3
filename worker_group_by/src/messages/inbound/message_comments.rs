@@ -9,5 +9,6 @@ pub struct DataInboundComment {
 #[derive(Deserialize)]
 pub struct MessageInboundComments {
     pub opcode: u8,
+    #[serde(default)]
     pub payload: Option<Vec<DataInboundComment>>
 }

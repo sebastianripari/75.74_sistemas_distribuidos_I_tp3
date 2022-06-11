@@ -1,4 +1,4 @@
-use crate::messages::opcodes::MESSAGE_OPCODE_NORMAL;
+use crate::messages::opcodes::{MESSAGE_OPCODE_NORMAL, MESSAGE_OPCODE_END};
 
 use super::logger::Logger;
 use amiquip::{
@@ -116,6 +116,26 @@ pub struct Message<T: Serialize> {
     pub payload: Option<T>
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct MessageEnd {
+    pub opcode: u8
+}
+
+// send message end to other process, pushing to a queue
+pub fn middleware_send_msg_end(exchange: &Exchange, queue_name: &str) {
+    let message = Message::<()> {
+        opcode: MESSAGE_OPCODE_END,
+        payload: None,
+    };
+
+    exchange
+        .publish(Publish::new(
+            serde_json::to_string(&message).unwrap().as_bytes(),
+            queue_name,
+        ))
+        .unwrap();
+}
+
 // send message to other process, pushing to a queue
 pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue_name: &str) {
 
@@ -145,13 +165,8 @@ pub fn middleware_end_reached(n_end: &mut usize) -> bool {
 pub fn middleware_consumer_end(exchange: &Exchange, queue_name: &str) {
     let n_consumers = get_n_consumers();
 
-    let message: Message<()> = Message {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: None,
-    };
-
     for _ in 0..n_consumers {
-        middleware_send_msg(exchange, &message, queue_name);
+        middleware_send_msg_end(exchange, queue_name);
     }
 }
 

@@ -70,6 +70,7 @@ fn main() {
             _ => {}
         }
     }
+    logger.info("end consuming posts".to_string());
 
     let mut n_comments_processed = 0;
     let mut comments = HashMap::new();
@@ -107,7 +108,9 @@ fn main() {
             _ => {}
         }
     }
+    logger.info("end consuming comments".to_string());
 
+    logger.info("finding max".to_string());
     let max = comments.iter().max_by(|a, b| {
         (a.1 .1 / (a.1 .0 as f32))
             .partial_cmp(&(b.1 .1 / (b.1 .0 as f32)))

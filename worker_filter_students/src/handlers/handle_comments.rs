@@ -36,6 +36,10 @@ pub fn handle_comments(
     logger: &Logger,
     exchange: &Exchange,
 ) {
+    if payload.len() == 0 {
+        return
+    }
+
     *n += payload.len();
 
     for comment in payload {
@@ -49,7 +53,7 @@ pub fn handle_comments(
         }
     }
 
-    if *n % LOG_RATE == 0 {
+    if *n % LOG_RATE < 10 {
         logger.info(format!("n processed: {}", n))
     }
 }

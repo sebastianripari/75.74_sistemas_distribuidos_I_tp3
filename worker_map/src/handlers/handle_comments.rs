@@ -5,7 +5,8 @@ use crate::{
     messages::{
         inbound::data_comments_body_sentiment::DataCommentBodySentiment,
         outbound::{
-            data_comments_body::{DataCommentBody, VecDataCommentBody}, data_comments_sentiment::DataCommentSentiment,
+            data_comments_body::DataCommentBody,
+            data_comments_sentiment::DataCommentSentiment,
         },
     },
     utils::{
@@ -20,7 +21,7 @@ const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/
 fn publish_comments_body(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
-    let payload_comments_body: VecDataCommentBody = payload
+    let payload_comments_body: Vec<DataCommentBody> = payload
         .iter()
         .map(|comment| {
             let permalink = comment.permalink.to_string();
