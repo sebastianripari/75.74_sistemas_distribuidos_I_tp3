@@ -1,8 +1,15 @@
 use crate::{
-    entities::post::Post, messages::inbound::message_posts::PostData, utils::logger::{Logger, LOG_RATE},
+    entities::post::Post,
+    messages::inbound::data_post_score_url::DataPostScoreUrl,
+    utils::logger::{Logger, LOG_RATE},
 };
 
-pub fn handle_posts(payload: Vec<PostData>, n: &mut usize, logger: &Logger, posts: &mut Vec<Post>) {
+pub fn handle_posts(
+    payload: Vec<DataPostScoreUrl>,
+    n: &mut usize,
+    logger: &Logger,
+    posts: &mut Vec<Post>,
+) {
     *n += payload.len();
 
     for post in payload {

@@ -1,11 +1,12 @@
 use amiquip::{Exchange, Publish};
 
 use crate::constants::queues::QUEUE_POSTS_TO_JOIN;
-use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use crate::messages::opcodes::{MESSAGE_OPCODE_NORMAL};
 use crate::messages::outbound::message_posts::{PostData, MessagePosts};
+use crate::utils::middleware::{middleware_send_msg_end, middleware_send_msg};
 use crate::{entities::post::Post, utils::logger::Logger};
 
-fn publish_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
+fn send_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
     for chunk in posts.chunks(100) {
         let payload_posts: Vec<PostData> = chunk
             .iter()
@@ -18,32 +19,12 @@ fn publish_posts_filtered(exchange: &Exchange, posts: &mut Vec<Post>) {
             .rev()
             .collect();
 
-        let message_posts = MessagePosts{
-            opcode: MESSAGE_OPCODE_NORMAL,
-            payload: Some(payload_posts)
-        };
-
-        exchange
-            .publish(Publish::new(
-                serde_json::to_string(&message_posts).unwrap().as_bytes(),
-                QUEUE_POSTS_TO_JOIN,
-            ))
-            .unwrap();
+        middleware_send_msg(exchange, &payload_posts, QUEUE_POSTS_TO_JOIN);
     }
 }
 
-fn publish_posts_filtered_end(exchange: &Exchange) {
-    let msg_end = MessagePosts {
-        opcode: MESSAGE_OPCODE_END,
-        payload: None
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_JOIN,
-        ))
-        .unwrap();
+fn send_posts_filtered_end(exchange: &Exchange) {
+    middleware_send_msg_end(exchange, QUEUE_POSTS_TO_JOIN)
 }
 
 pub fn handle_score_avg(
@@ -56,8 +37,8 @@ pub fn handle_score_avg(
     logger.info("start filtering posts".to_string());
     posts.retain(|post| (post.score as f32) > score_avg);
 
-    publish_posts_filtered(exchange, posts);
-    publish_posts_filtered_end(exchange);
+    send_posts_filtered(exchange, posts);
+    send_posts_filtered_end(exchange);
 
     logger.info("finish filtering posts".to_string());
 }
