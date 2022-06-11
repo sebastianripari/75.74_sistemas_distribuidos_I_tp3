@@ -1,96 +1,65 @@
-use amiquip::{
-    ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions,
-};
+use amiquip::ConsumerMessage;
 use constants::queues::QUEUE_COMMENTS_TO_MAP;
+use handlers::handle_comments::handle_comments;
+use handlers::handle_comments_end::handle_comments_end;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
-use utils::logger::logger_create;
-use utils::rabbitmq::{rabbitmq_connect, rabbitmq_create_channel, rabbitmq_declare_queue, rabbitmq_create_consumer, rabbitmq_create_exchange};
-use std::env;
 use std::{thread, time::Duration};
-use handlers::handle_comments_end::handle_comments_end;
-use handlers::handle_comments::handle_comments;
+use utils::logger::logger_create;
+use utils::rabbitmq::{
+    rabbitmq_connect, rabbitmq_create_channel, rabbitmq_create_consumer, rabbitmq_create_exchange,
+    rabbitmq_declare_queue, rabbitmq_end_reached,
+};
 
+mod constants;
+mod handlers;
 mod messages;
 mod utils;
-mod handlers;
-mod constants;
-
-fn get_n_producers() -> usize {
-    let mut n_producers = 1;
-    if let Ok(value) = env::var("N_PRODUCERS") {
-        n_producers = value.parse::<usize>().unwrap();
-    }
-    n_producers
-}
-
-fn get_n_consumers() -> usize {
-    let mut n_consumers = 1;
-    if let Ok(value) = env::var("N_CONSUMERS") {
-        n_consumers = value.parse::<usize>().unwrap();
-    }
-    n_consumers
-}
 
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    let n_producers = get_n_producers();
-    let n_consumers = get_n_consumers();
-
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_create_channel(&mut rabbitmq_connection);
+    let mut connection = rabbitmq_connect(&logger);
+    let channel = rabbitmq_create_channel(&mut connection);
     let queue = rabbitmq_declare_queue(&channel, QUEUE_COMMENTS_TO_MAP);
     let consumer = rabbitmq_create_consumer(&queue);
     let exchange = rabbitmq_create_exchange(&channel);
 
+    let mut n_end = 0;
     let mut n_processed = 0;
-    let mut ends = 0;
+
     for message in consumer.receiver().iter() {
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
-                let opcode = msg.opcode;
-                let payload = msg.payload;
+        let mut end = false;
 
-                match opcode {
-                    MESSAGE_OPCODE_END => {
-                        ends += 1;
-                        logger.info(format!("current ends: {}, ends to reach: {}", ends, n_producers));
-                        if ends == n_producers {
-                            handle_comments_end(&exchange, &logger);
-                        }
-                    }
-                    MESSAGE_OPCODE_NORMAL => {
-                        handle_comments(
-                            &mut payload.unwrap(),
-                            &mut n_processed,
-                            &exchange,
-                            &logger
-                        );
-                    }
-                    _ => {
-                    }
-                }
+        if let ConsumerMessage::Delivery(delivery) = message {
+            let body = String::from_utf8_lossy(&delivery.body);
+            let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
+            let opcode = msg.opcode;
+            let payload = msg.payload;
 
-                consumer.ack(delivery).unwrap();
-
-                if ends == n_producers {
-                    break;
+            if opcode == MESSAGE_OPCODE_END {
+                if rabbitmq_end_reached(&mut n_end) {
+                    handle_comments_end(&exchange, &logger);
+                    end = true;
                 }
             }
-            _ => {}
+            if opcode == MESSAGE_OPCODE_NORMAL {
+                handle_comments(&mut payload.unwrap(), &mut n_processed, &exchange, &logger);
+            }
+
+            consumer.ack(delivery).unwrap();
+
+            if end {
+                break;
+            }
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 
-    logger.info("worker map shutdown".to_string());
+    logger.info("shutdown".to_string());
 }

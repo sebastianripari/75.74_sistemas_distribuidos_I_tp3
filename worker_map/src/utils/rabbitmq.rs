@@ -22,6 +22,22 @@ fn get_rabbitmq_password() -> String {
     }
 }
 
+fn get_n_producers() -> usize {
+    let mut n_producers = 1;
+    if let Ok(value) = env::var("N_PRODUCERS") {
+        n_producers = value.parse::<usize>().unwrap();
+    }
+    n_producers
+}
+
+fn get_n_consumers() -> usize {
+    let mut n_consumers = 1;
+    if let Ok(value) = env::var("N_CONSUMERS") {
+        n_consumers = value.parse::<usize>().unwrap();
+    }
+    n_consumers
+}
+
 pub fn rabbitmq_connect(logger: &Logger) -> Connection {
     let rabbitmq_user = get_rabbitmq_user();
     let rabbitmq_password = get_rabbitmq_password();
@@ -62,4 +78,12 @@ pub fn rabbitmq_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
 
 pub fn rabbitmq_create_exchange(channel: &Channel) -> Exchange {
     Exchange::direct(&channel)
+}
+
+pub fn rabbitmq_end_reached(n_end: &mut usize) -> bool {
+    *n_end += 1;
+
+    let n_producers = get_n_producers();
+
+    *n_end == n_producers
 }
