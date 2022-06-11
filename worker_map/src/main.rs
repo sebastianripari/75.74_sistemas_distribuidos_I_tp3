@@ -1,13 +1,13 @@
 use amiquip::ConsumerMessage;
-use constants::queues::QUEUE_COMMENTS_TO_MAP;
+use constants::queues::{QUEUE_COMMENTS_TO_MAP};
 use handlers::handle_comments::handle_comments;
-use handlers::handle_comments_end::handle_comments_end;
+use handlers::handle_comments_end::handle_end;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use utils::logger::logger_create;
 use utils::middleware::{
     middleware_connect, middleware_create_channel, middleware_create_consumer,
-    middleware_create_exchange, middleware_declare_queue, middleware_end_reached,
+    middleware_create_exchange, middleware_declare_queue,
 };
 
 mod constants;
@@ -38,10 +38,7 @@ fn main() {
             let payload = msg.payload;
 
             if opcode == MESSAGE_OPCODE_END {
-                if middleware_end_reached(&mut n_end) {
-                    handle_comments_end(&exchange, &logger);
-                    end = true;
-                }
+                end = handle_end(&exchange, &mut n_end);
             }
 
             if opcode == MESSAGE_OPCODE_NORMAL {

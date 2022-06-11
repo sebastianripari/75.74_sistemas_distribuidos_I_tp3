@@ -1,7 +1,10 @@
+use crate::messages::opcodes::MESSAGE_OPCODE_END;
+
 use super::logger::Logger;
 use amiquip::{
-    Channel, Connection, Consumer, ConsumerOptions, Exchange, Queue, QueueDeclareOptions,
+    Channel, Connection, Consumer, ConsumerOptions, Exchange, Queue, QueueDeclareOptions, Publish,
 };
+use serde::Serialize;
 use std::{env, thread, time::Duration};
 
 /* Middleware */
@@ -99,4 +102,18 @@ pub fn middleware_end_reached(n_end: &mut usize) -> bool {
     let n_producers = get_n_producers();
 
     *n_end == n_producers
+}
+
+
+pub fn middleware_consumer_end<T: Serialize>(exchange: &Exchange, queue_name: &str, msg_end: T) {
+    let n_consumers = get_n_consumers();
+
+    for _ in 0..n_consumers {
+        exchange
+        .publish(Publish::new(
+            serde_json::to_string(&msg_end).unwrap().as_bytes(),
+            queue_name,
+        ))
+        .unwrap();
+    }
 }

@@ -1,43 +1,37 @@
-use amiquip::{Exchange, Publish};
+use amiquip::{Exchange};
 
 use crate::{
     messages::{
-        opcodes::MESSAGE_OPCODE_END, outbound::message_comments_body::MessageOutboundCommentsBody,
+        opcodes::MESSAGE_OPCODE_END, outbound::{message_comments_body::MessageOutboundCommentsBody, message_comments_sentiment::MessageOutboundCommentsSentiment},
     },
-    utils::logger::Logger, constants::queues::{QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_FILTER_STUDENTS}
+    utils::{middleware::{middleware_end_reached, middleware_consumer_end}}, constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS}
 };
 
-pub fn publish_comments_body_end(exchange: &Exchange) {
-    let msg_end = MessageOutboundCommentsBody {
-        opcode: MESSAGE_OPCODE_END,
-        payload: None,
-    };
+pub fn handle_end(exchange: &Exchange, n_end: &mut usize) -> bool {
+    let mut end = false;
 
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
+    if middleware_end_reached(n_end) {
+
+        middleware_consumer_end::<MessageOutboundCommentsBody>(
+            &exchange, 
             QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-        ))
-        .unwrap();
-}
+            MessageOutboundCommentsBody{
+                opcode: MESSAGE_OPCODE_END,
+                payload: None,
+            }
+        );
 
-pub fn publish_comments_sentiment_end(exchange: &Exchange) {
-    let msg_end = MessageOutboundCommentsBody {
-        opcode: MESSAGE_OPCODE_END,
-        payload: None,
-    };
+        middleware_consumer_end::<MessageOutboundCommentsSentiment>(
+            &exchange, 
+            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+            MessageOutboundCommentsSentiment{
+                opcode: MESSAGE_OPCODE_END,
+                payload: None,
+            }
+        );
 
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_GROUP_BY,
-        ))
-        .unwrap();
-}
+        end = true;
+    }
 
-pub fn handle_comments_end(exchange: &Exchange, logger: &Logger) {
-    logger.info("doing end".to_string());
-
-    publish_comments_body_end(exchange);
-    publish_comments_sentiment_end(exchange);
+    return end
 }
