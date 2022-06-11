@@ -18,7 +18,7 @@ use regex::Regex;
 
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
-fn publish_comments_body(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
+fn send_comments_body(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
     let payload_comments_body: Vec<DataCommentBody> = payload
@@ -43,7 +43,7 @@ fn publish_comments_body(payload: &Vec<DataCommentBodySentiment>, exchange: &Exc
     )
 }
 
-fn publish_comments_sentiment(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
+fn send_comments_sentiment(payload: &Vec<DataCommentBodySentiment>, exchange: &Exchange) {
     let regex = Regex::new(COMMENT_PERMALINK_REGEX).unwrap();
 
     let payload_comments_sentiment: Vec<DataCommentSentiment> = payload
@@ -83,8 +83,8 @@ pub fn handle_comments(
         None => false,
     });
 
-    publish_comments_body(&payload, exchange);
-    publish_comments_sentiment(&payload, exchange);
+    send_comments_body(&payload, exchange);
+    send_comments_sentiment(&payload, exchange);
 
     if *n % LOG_RATE == 0 {
         logger.info(format!("n processed: {}", n));
