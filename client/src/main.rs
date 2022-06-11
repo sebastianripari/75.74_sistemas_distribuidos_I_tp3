@@ -21,6 +21,7 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
     let mut posts_score_avg_received = false;
     let mut meme_with_best_sentiment_received = false;
 
+    
     loop {
         if let Some(key) = socket_reader.receive() {
 

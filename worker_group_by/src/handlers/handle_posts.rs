@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{messages::inbound::message_posts::DataInboundPost, utils::logger::{Logger, LOG_RATE}};
+use crate::{messages::inbound::data_post_url::DataPostUrl, utils::logger::{Logger, LOG_RATE}};
 
 pub fn handle_posts(
-    payload: Vec<DataInboundPost>,
+    payload: Vec<DataPostUrl>,
     n: &mut usize,
     logger: &Logger,
     posts: &mut HashMap<String, String>,

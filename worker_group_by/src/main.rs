@@ -1,13 +1,12 @@
-use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, Publish, QueueDeclareOptions};
+use amiquip::{ConsumerMessage};
 use constants::queues::{QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_POSTS_TO_GROUP_BY, QUEUE_TO_CLIENT};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
-    inbound::{message_comments::MessageInboundComments, message_posts::MessageInboundPosts},
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
-    outbound::message_client::{Data, MessageClient},
+    inbound::{data_comment_sentiment::DataCommentSentiment, data_post_url::DataPostUrl},
+    outbound::data_best_url::DataBestUrl
 };
-use std::{collections::HashMap, fs::File, io::Read, thread, time::Duration};
-use utils::{logger::logger_create, rabbitmq::rabbitmq_connect};
+use std::{collections::HashMap};
+use utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, middleware_send_msg, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}};
 
 mod constants;
 mod handlers;
@@ -18,22 +17,13 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let exchange = Exchange::direct(&channel);
-
-    let queue_posts = channel
-        .queue_declare(QUEUE_POSTS_TO_GROUP_BY, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer_posts = queue_posts.consume(ConsumerOptions::default()).unwrap();
-
-    let queue_comments = channel
-        .queue_declare(QUEUE_COMMENTS_TO_GROUP_BY, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer_comments = queue_comments.consume(ConsumerOptions::default()).unwrap();
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue_posts = middleware_declare_queue(&channel, QUEUE_POSTS_TO_GROUP_BY);
+    let queue_comments = middleware_declare_queue(&channel, QUEUE_COMMENTS_TO_GROUP_BY);
+    let consumer_posts = middleware_create_consumer(&queue_posts);
+    let consumer_comments = middleware_create_consumer(&queue_comments);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut end = false;
     let mut n_posts_processed = 0;
@@ -42,7 +32,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageInboundPosts = serde_json::from_str(&body).unwrap();
+                let msg: Message<Vec<DataPostUrl>> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
@@ -70,7 +60,6 @@ fn main() {
             _ => {}
         }
     }
-    logger.info("end consuming posts".to_string());
 
     let mut n_comments_processed = 0;
     let mut comments = HashMap::new();
@@ -79,7 +68,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
+                let msg: Message<Vec<DataCommentSentiment>> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
@@ -108,7 +97,6 @@ fn main() {
             _ => {}
         }
     }
-    logger.info("end consuming comments".to_string());
 
     logger.info("finding max".to_string());
     let max = comments.iter().max_by(|a, b| {
@@ -119,24 +107,14 @@ fn main() {
 
     let url = max.unwrap().1 .2.to_string();
 
-    let msg = MessageClient {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(Data {
-            key: "meme_with_best_sentiment".to_string(),
-            value: url,
-        }),
-    };
+    let payload = DataBestUrl {
+        key: "meme_with_best_sentiment".to_string(),
+        value: url,
+    }; 
 
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg).unwrap().as_bytes(),
-            QUEUE_TO_CLIENT,
-        ))
-        .unwrap();
+    middleware_send_msg(&exchange, &payload, QUEUE_TO_CLIENT);
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 
     logger.info("shutdown".to_string());
 }

@@ -1,2 +1,2 @@
-pub mod message_comments;
-pub mod message_posts;
+pub mod data_comment_sentiment;
+pub mod data_post_url;

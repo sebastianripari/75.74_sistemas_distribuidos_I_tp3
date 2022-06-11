@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use crate::{messages::inbound::message_comments::DataInboundComment, utils::logger::{Logger, LOG_RATE}};
+use crate::{messages::inbound::data_comment_sentiment::DataCommentSentiment, utils::logger::{Logger, LOG_RATE}};
 
 pub fn handle_comments(
-    payload: Vec<DataInboundComment>,
+    payload: Vec<DataCommentSentiment>,
     n: &mut usize,
     logger: &Logger,
     posts: &HashMap<String, String>,

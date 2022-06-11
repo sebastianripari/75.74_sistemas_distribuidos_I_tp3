@@ -3,11 +3,10 @@ use constants::queues::{QUEUE_COMMENTS_TO_MAP};
 use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_end;
 use messages::inbound::data_comments_body_sentiment::{VecDataCommentBodySentiment};
-use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use utils::logger::logger_create;
 use utils::middleware::{
     middleware_connect, middleware_create_channel, middleware_create_consumer,
-    middleware_create_exchange, middleware_declare_queue, Message,
+    middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
 };
 
 mod constants;
