@@ -4,12 +4,9 @@ use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_comments_end;
 use messages::inbound::message_comments::MessageInboundComments;
 use messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
+use utils::middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, middleware_end_reached};
 use std::{thread, time::Duration};
 use utils::logger::logger_create;
-use utils::rabbitmq::{
-    rabbitmq_connect, rabbitmq_create_channel, rabbitmq_create_consumer, rabbitmq_create_exchange,
-    rabbitmq_declare_queue, rabbitmq_end_reached,
-};
 
 mod constants;
 mod handlers;
@@ -23,11 +20,11 @@ fn main() {
     // wait rabbit
     thread::sleep(Duration::from_secs(30));
 
-    let mut connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_create_channel(&mut connection);
-    let queue = rabbitmq_declare_queue(&channel, QUEUE_COMMENTS_TO_MAP);
-    let consumer = rabbitmq_create_consumer(&queue);
-    let exchange = rabbitmq_create_exchange(&channel);
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue = middleware_declare_queue(&channel, QUEUE_COMMENTS_TO_MAP);
+    let consumer = middleware_create_consumer(&queue);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut n_end = 0;
     let mut n_processed = 0;
@@ -42,11 +39,12 @@ fn main() {
             let payload = msg.payload;
 
             if opcode == MESSAGE_OPCODE_END {
-                if rabbitmq_end_reached(&mut n_end) {
+                if middleware_end_reached(&mut n_end) {
                     handle_comments_end(&exchange, &logger);
                     end = true;
                 }
             }
+
             if opcode == MESSAGE_OPCODE_NORMAL {
                 handle_comments(&mut payload.unwrap(), &mut n_processed, &exchange, &logger);
             }

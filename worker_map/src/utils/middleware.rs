@@ -38,7 +38,7 @@ fn get_n_consumers() -> usize {
     n_consumers
 }
 
-pub fn rabbitmq_connect(logger: &Logger) -> Connection {
+pub fn middleware_connect(logger: &Logger) -> Connection {
     let rabbitmq_user = get_rabbitmq_user();
     let rabbitmq_password = get_rabbitmq_password();
 
@@ -62,25 +62,25 @@ pub fn rabbitmq_connect(logger: &Logger) -> Connection {
     rabbitmq_connection
 }
 
-pub fn rabbitmq_create_channel(connection: &mut Connection) -> Channel {
+pub fn middleware_create_channel(connection: &mut Connection) -> Channel {
     connection.open_channel(None).unwrap()
 }
 
-pub fn rabbitmq_declare_queue<'a>(channel: &'a Channel, queue_name: &'a str) -> Queue<'a> {
+pub fn middleware_declare_queue<'a>(channel: &'a Channel, queue_name: &'a str) -> Queue<'a> {
     channel
         .queue_declare(queue_name, QueueDeclareOptions::default())
         .unwrap()
 }
 
-pub fn rabbitmq_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
+pub fn middleware_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
     queue.consume(ConsumerOptions::default()).unwrap()
 }
 
-pub fn rabbitmq_create_exchange(channel: &Channel) -> Exchange {
+pub fn middleware_create_exchange(channel: &Channel) -> Exchange {
     Exchange::direct(&channel)
 }
 
-pub fn rabbitmq_end_reached(n_end: &mut usize) -> bool {
+pub fn middleware_end_reached(n_end: &mut usize) -> bool {
     *n_end += 1;
 
     let n_producers = get_n_producers();
