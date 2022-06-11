@@ -54,6 +54,7 @@ fn get_n_consumers() -> usize {
 }
 
 // makes the connection with RabbitMQ
+// iterations: try and wait each one seconds, because RabbitMQ takes a bit to wake up
 pub fn middleware_connect(logger: &Logger) -> Connection {
     loop {
         match middleware_connect_(&logger) {
@@ -106,6 +107,7 @@ pub fn middleware_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
     queue.consume(ConsumerOptions::default()).unwrap()
 }
 
+// makes exchange
 pub fn middleware_create_exchange(channel: &Channel) -> Exchange {
     Exchange::direct(&channel)
 }
@@ -153,7 +155,7 @@ pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue
 }
 
 // detect if the producer finished
-pub fn middleware_end_reached(n_end: &mut usize) -> bool {
+fn middleware_end_reached(n_end: &mut usize) -> bool {
     *n_end += 1;
 
     let n_producers = get_n_producers();
@@ -162,11 +164,20 @@ pub fn middleware_end_reached(n_end: &mut usize) -> bool {
 }
 
 // send end to the consumer
-pub fn middleware_consumer_end(exchange: &Exchange, queue_name: &str) {
-    let n_consumers = get_n_consumers();
+pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>) -> bool {
+    
+    if middleware_end_reached(n_end) {
+        let n_consumers = get_n_consumers();
 
-    for _ in 0..n_consumers {
-        middleware_send_msg_end(exchange, queue_name);
+        for _ in 0..n_consumers {
+            for queue in queues.iter() {
+                middleware_send_msg_end(exchange, queue);
+            }
+        }
+
+        return true
     }
+
+    return false
 }
 
