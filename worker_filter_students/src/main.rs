@@ -1,14 +1,12 @@
-use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use amiquip::{ConsumerMessage};
 use constants::queues::QUEUE_COMMENTS_TO_FILTER_STUDENTS;
 use messages::{
-    inbound::{message_comments::MessageInboundComments},
+    inbound::{data_comment_body::{DataCommentBody}},
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}
 };
 use handlers::handle_comments::handle_comments;
 use handlers::handle_comments_end::handle_comments_end;
-use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-
-use std::{thread, time::Duration};
+use utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message}};
 
 mod messages;
 mod utils;
@@ -19,37 +17,30 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue = channel
-        .queue_declare(
-            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-            QueueDeclareOptions::default(),
-        )
-        .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
-    let exchange = Exchange::direct(&channel);
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue = middleware_declare_queue(&channel, QUEUE_COMMENTS_TO_FILTER_STUDENTS);
+    let consumer = middleware_create_consumer(&queue);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut n_processed = 0;
+    let mut n_end = 0;
     let mut end = false;
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageInboundComments = serde_json::from_str(&body).unwrap();
+                let msg: Message<Vec<DataCommentBody>> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        handle_comments_end(
+                        end = handle_comments_end(
+                            &mut n_end,
                             &exchange,
                             &logger
                         );
-                        end = true
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
@@ -72,9 +63,7 @@ fn main() {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 
     logger.info("shutdown".to_string());
 }

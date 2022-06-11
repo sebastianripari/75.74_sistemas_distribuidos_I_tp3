@@ -1,1 +1,1 @@
-pub mod message_comment;
+pub mod data_comment;

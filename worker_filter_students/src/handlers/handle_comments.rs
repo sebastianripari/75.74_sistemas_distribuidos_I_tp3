@@ -1,37 +1,16 @@
-use amiquip::{Exchange, Publish};
+use amiquip::{Exchange};
 
 use crate::{
-    messages::{
-        inbound::message_comments::DataInboundComment, opcodes::MESSAGE_OPCODE_NORMAL,
-        outbound::message_comment::{MessageOutboundComment, DataOutboundComment},
-    },
-    utils::logger::{Logger, LOG_RATE},
-    constants::queues::QUEUE_COMMENTS_TO_JOIN
+    utils::{logger::{Logger, LOG_RATE}, middleware::middleware_send_msg},
+    constants::queues::QUEUE_COMMENTS_TO_JOIN,
+    messages::{outbound::data_comment::DataComment, inbound::data_comment_body::DataCommentBody}
 };
 
 const STUDENTS_WORDS: [&'static str; 5] =
     ["university", "college", "student", "teacher", "professor"];
 
-fn publish_comments_filtered(exchange: &Exchange, post_id: String) {
-    let payload = DataOutboundComment {
-        post_id: post_id,
-    };
-
-    let msg_comment = MessageOutboundComment {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_comment).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_JOIN,
-        ))
-        .unwrap();
-}
-
 pub fn handle_comments(
-    payload: Vec<DataInboundComment>,
+    payload: Vec<DataCommentBody>,
     n: &mut usize,
     logger: &Logger,
     exchange: &Exchange,
@@ -47,7 +26,11 @@ pub fn handle_comments(
         for word in STUDENTS_WORDS {
             if comment.body.to_ascii_lowercase().contains(word) {
                 logger.debug("match student".to_string());
-                publish_comments_filtered(exchange, comment.post_id.to_string());
+
+                let payload = DataComment {
+                    post_id: comment.post_id.to_string(),
+                };
+                middleware_send_msg(exchange, &payload, QUEUE_COMMENTS_TO_JOIN);
                 break;
             }
         }
