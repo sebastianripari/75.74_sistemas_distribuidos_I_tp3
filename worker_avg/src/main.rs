@@ -1,33 +1,29 @@
-use amiquip::{ConsumerMessage, ConsumerOptions, Exchange, QueueDeclareOptions};
+use amiquip::ConsumerMessage;
 use constants::queues::QUEUE_POSTS_TO_AVG;
 use handlers::handle_calc_avg::handle_calc_avg;
 use handlers::handle_calc_avg_end::handle_calc_avg_end;
-use messages::{
-    inbound::message_scores::MessageScores,
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+use utils::{
+    logger::logger_create,
+    middleware::{
+        middleware_connect, middleware_create_channel, middleware_create_consumer,
+        middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+    },
 };
-use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-use std::{thread, time::Duration};
 
+mod constants;
 mod handlers;
 mod messages;
 mod utils;
-mod constants;
 
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let exchange = Exchange::direct(&channel);
-    let queue = channel
-        .queue_declare(QUEUE_POSTS_TO_AVG, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue = middleware_declare_queue(&channel, QUEUE_POSTS_TO_AVG);
+    let consumer = middleware_create_consumer(&queue);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut n_processed: usize = 0;
     let mut end = false;
@@ -39,7 +35,7 @@ fn main() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let msg: MessageScores = serde_json::from_str(&body).unwrap();
+                let msg: Message<Vec<i32>> = serde_json::from_str(&body).unwrap();
                 let opcode = msg.opcode;
                 let payload = msg.payload;
 
@@ -70,9 +66,7 @@ fn main() {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 
     logger.info("shutdown".to_string());
 }
