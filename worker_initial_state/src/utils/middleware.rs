@@ -100,6 +100,15 @@ pub fn middleware_declare_queue<'a>(channel: &'a Channel, queue_name: &'a str) -
         .unwrap()
 }
 
+// makes a queues declaration
+pub fn middleware_declare_queues(channel: &Channel, queues: Vec<&str>) {
+    for queue in queues {
+        channel
+            .queue_declare(queue, QueueDeclareOptions::default())
+            .unwrap();
+    }
+}
+
 // makes queue consumer
 pub fn middleware_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
     queue.consume(ConsumerOptions::default()).unwrap()

@@ -1,18 +1,15 @@
-use amiquip::{Channel, ConsumerMessage, QueueDeclareOptions};
-use constants::queues::{
-    AVG_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
-    QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
-    QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_JOIN,
+use amiquip::{ConsumerMessage};
+use constants::queues::{QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
+    QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUES,
 };
 use handlers::handle_comments::handle_comments;
 use handlers::handle_posts::handle_posts;
-use handlers::handle_posts_end::handle_post_end;
 use utils::{
     logger::logger_create,
     middleware::{
         middleware_connect, middleware_consumer_end, middleware_create_channel,
         middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
-        middleware_send_msg_end,
+        middleware_send_msg_end, middleware_declare_queues,
     },
 };
 
@@ -31,32 +28,13 @@ const OPCODE_COMMENT_END: u8 = 3;
 pub const LOG_LEVEL: &str = "debug";
 pub const LOG_RATE: usize = 100000;
 
-fn rabbitmq_declare_queues(channel: &Channel) {
-    for queue in [
-        AVG_TO_FILTER_SCORE,
-        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-        QUEUE_COMMENTS_TO_GROUP_BY,
-        QUEUE_COMMENTS_TO_JOIN,
-        QUEUE_COMMENTS_TO_MAP,
-        QUEUE_INITIAL_STATE,
-        QUEUE_POSTS_TO_AVG,
-        QUEUE_POSTS_TO_FILTER_SCORE,
-        QUEUE_POSTS_TO_GROUP_BY,
-        QUEUE_POSTS_TO_JOIN,
-    ] {
-        channel
-            .queue_declare(queue, QueueDeclareOptions::default())
-            .unwrap();
-    }
-}
-
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
     let mut connection = middleware_connect(&logger);
     let channel = middleware_create_channel(&mut connection);
-    rabbitmq_declare_queues(&channel);
+    middleware_declare_queues(&channel, QUEUES.to_vec());
     let queue = middleware_declare_queue(&channel, QUEUE_INITIAL_STATE);
     let consumer = middleware_create_consumer(&queue);
     let exchange = middleware_create_exchange(&channel);
