@@ -43,12 +43,14 @@ fn get_n_producers() -> usize {
 }
 
 // get the numbers of consumers from ENV
-fn get_n_consumers() -> usize {
-    let mut n_consumers = 1;
-    if let Ok(value) = env::var("N_CONSUMERS") {
-        n_consumers = value.parse::<usize>().unwrap();
+fn get_n_consumers() -> Vec<usize> {
+    let mut value = "1".to_string();
+    if let Ok(v) = env::var("N_CONSUMERS") {
+        value = v;
     }
-    n_consumers
+    let n_consumers: Vec<&str>;
+    n_consumers = value.split(',').collect();
+    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
 }
 
 // makes the connection with RabbitMQ
@@ -170,13 +172,14 @@ fn middleware_end_reached(n_end: &mut usize) -> bool {
 
 // send end to the consumer
 pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>) -> bool {
-    
     if middleware_end_reached(n_end) {
-        let n_consumers = get_n_consumers();
+        let consumers = get_n_consumers();
 
-        for _ in 0..n_consumers {
+        for n in consumers {
             for queue in queues.iter() {
-                middleware_send_msg_end(exchange, queue);
+                for _ in 0..n {
+                    middleware_send_msg_end(exchange, queue);
+                }
             }
         }
 

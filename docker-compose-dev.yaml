@@ -9,7 +9,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_CONSUMERS=2 # worker_initial_state
+      - N_CONSUMERS=2, # worker_initial_state
     entrypoint: /tp2/target/release/server
     networks:
       - tp2_net
@@ -58,7 +58,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=1 # server
-      - N_CONSUMERS=6 # worker_map
+      - N_CONSUMERS=6, # worker_map
     depends_on:
       - server
     networks:
@@ -72,8 +72,8 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=2 # worker_initial_state
-      - N_CONSUMERS=1 # worker_filter_score
+      - N_PRODUCERS=2 # 2 worker_initial_state
+      - N_CONSUMERS=1, # 1 worker_filter_score
     depends_on:
       - server  
     networks:
@@ -89,8 +89,8 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - LOG_LEVEL=info
-      - N_PRODUCERS=2 # worker_initial_state
-      - N_CONSUMERS=3 # 2 worker_filter_students & 1 worker_group_by
+      - N_PRODUCERS=2    # 1 worker_initial_state
+      - N_CONSUMERS=2,1  # 2 worker_filter_students & 1 worker_group_by
     depends_on:
       - server
     networks:
@@ -107,7 +107,7 @@ services:
       - RABBITMQ_PASSWORD=seba1234
       - LOG_LEVEL=info
       - N_PRODUCERS=6 # worker_map
-      - N_CONSUMERS=1 # worker_join
+      - N_CONSUMERS=1, # worker_join
     depends_on:
       - server
     networks:
@@ -121,7 +121,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_CONSUMERS=1 # worker_join
+      - N_CONSUMERS=1, # worker_join
     depends_on:
       - server
     networks:

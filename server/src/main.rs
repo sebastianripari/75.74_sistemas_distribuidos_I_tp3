@@ -31,6 +31,17 @@ fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>
     }
 }
 
+// get the numbers of consumers from ENV
+fn get_n_consumers() -> Vec<usize> {
+    let mut value = "1".to_string();
+    if let Ok(v) = env::var("N_CONSUMERS") {
+        value = v;
+    }
+    let n_consumers: Vec<&str>;
+    n_consumers = value.split(',').collect();
+    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
+}
+
 fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
@@ -48,10 +59,7 @@ fn main() {
         port = p;
     }
 
-    let mut n_consumers = 1;
-    if let Ok(value) = env::var("N_CONSUMERS") {
-        n_consumers = value.parse::<usize>().unwrap();
-    }
+    let consumers = get_n_consumers();
 
     let (sender_clients, receiver_clients) = mpsc::channel();
 
@@ -105,13 +113,15 @@ fn main() {
                         }
 
                         if end {
-                            for _ in 0..n_consumers {
-                                exchange
-                                    .publish(Publish::new(
-                                        format!("{}|", OPCODE_COMMENT_END).as_bytes(),
-                                        QUEUE_INITIAL_STATE,
-                                    ))
-                                    .unwrap();
+                            for n in consumers {
+                                for _ in 0..n {
+                                    exchange
+                                        .publish(Publish::new(
+                                            format!("{}|", OPCODE_COMMENT_END).as_bytes(),
+                                            QUEUE_INITIAL_STATE,
+                                        ))
+                                        .unwrap();
+                                }
                             }
                             sender_signal_clone.send(()).unwrap();
                             break;
