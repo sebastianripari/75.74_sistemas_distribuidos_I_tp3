@@ -1,18 +1,19 @@
-use crate::utils::logger::Logger;
-use amiquip::{
-    Channel, Connection, ConsumerMessage, ConsumerOptions, Exchange, Queue, QueueDeclareOptions,
-};
+use amiquip::{Channel, ConsumerMessage, QueueDeclareOptions};
 use constants::queues::{
     AVG_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
     QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
     QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_JOIN,
 };
 use handlers::handle_comments::handle_comments;
-use handlers::handle_comments_end::handle_comments_end;
 use handlers::handle_posts::handle_posts;
 use handlers::handle_posts_end::handle_post_end;
-use utils::{rabbitmq::rabbitmq_connect, logger::logger_create};
-use std::{thread, time::Duration, env};
+use utils::{
+    logger::logger_create,
+    middleware::{
+        middleware_connect, middleware_consumer_end, middleware_create_channel,
+        middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
+    },
+};
 
 mod constants;
 mod entities;
@@ -40,7 +41,7 @@ fn rabbitmq_declare_queues(channel: &Channel) {
         QUEUE_POSTS_TO_AVG,
         QUEUE_POSTS_TO_FILTER_SCORE,
         QUEUE_POSTS_TO_GROUP_BY,
-        QUEUE_POSTS_TO_JOIN
+        QUEUE_POSTS_TO_JOIN,
     ] {
         channel
             .queue_declare(queue, QueueDeclareOptions::default())
@@ -52,32 +53,18 @@ fn main() {
     let logger = logger_create();
     logger.info("start".to_string());
 
-    let mut n_producers = 1;
-    if let Ok(value) = env::var("N_PRODUCERS") {
-        n_producers = value.parse::<usize>().unwrap()
-    }
-
-    let mut n_consumers = 1;
-    if let Ok(value) = env::var("N_CONSUMERS") {
-        n_consumers = value.parse::<usize>().unwrap();
-    }
-
-    // wait rabbit
-    thread::sleep(Duration::from_secs(30));
-
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let exchange = Exchange::direct(&channel);
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
     rabbitmq_declare_queues(&channel);
-    let queue = channel
-        .queue_declare(QUEUE_INITIAL_STATE, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
+    let queue = middleware_declare_queue(&channel, QUEUE_INITIAL_STATE);
+    let consumer = middleware_create_consumer(&queue);
+    let exchange = middleware_create_exchange(&channel);
 
     let mut n_post_received: usize = 0;
     let mut n_comment_received: usize = 0;
 
-    let mut ends = 0;
+    let mut end = false;
+    let mut n_end = 0;
 
     for message in consumer.receiver().iter() {
         match message {
@@ -92,11 +79,12 @@ fn main() {
                         handle_post_end(&exchange, logger.clone());
                     }
                     OPCODE_COMMENT_END => {
-                        ends += 1;
-                        if ends == n_producers {
-                            logger.info("doing end".to_string());
-                            handle_comments_end(&exchange, logger.clone(), n_consumers);
-                            break;
+                        if middleware_consumer_end(
+                            &mut n_end,
+                            &exchange,
+                            [QUEUE_COMMENTS_TO_MAP].to_vec(),
+                        ) {
+                            end = true;
                         }
                     }
                     OPCODE_POST => {
@@ -119,8 +107,16 @@ fn main() {
                 }
 
                 consumer.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
             }
             _ => {}
         }
     }
+
+    connection.close().unwrap();
+
+    logger.info("shutdown".to_string());
 }
