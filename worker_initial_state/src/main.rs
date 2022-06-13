@@ -12,6 +12,7 @@ use utils::{
     middleware::{
         middleware_connect, middleware_consumer_end, middleware_create_channel,
         middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
+        middleware_send_msg_end,
     },
 };
 
@@ -76,7 +77,9 @@ fn main() {
 
                 match opcode {
                     OPCODE_POST_END => {
-                        handle_post_end(&exchange, logger.clone());
+                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
+                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
+                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
                     }
                     OPCODE_COMMENT_END => {
                         if middleware_consumer_end(
