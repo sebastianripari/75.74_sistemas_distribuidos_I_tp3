@@ -1,47 +1,17 @@
-use amiquip::{Exchange, Publish};
+use amiquip::{Exchange};
 
 use crate::{
-    messages::{
-        opcodes::MESSAGE_OPCODE_END, outbound::message_posts::MessagePosts,
-        outbound::message_scores::MessageScores,
-    },
-    utils::logger::Logger,
+    utils::{logger::Logger, middleware::middleware_send_msg_end},
     QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY,
 };
 
 fn publish_end_scores(exchange: &Exchange) {
-    let msg_end = MessageScores {
-        opcode: MESSAGE_OPCODE_END,
-        payload: None,
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_AVG,
-        ))
-        .unwrap();
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_GROUP_BY,
-        ))
-        .unwrap();
+    middleware_send_msg_end(exchange, QUEUE_POSTS_TO_AVG);
+    middleware_send_msg_end(exchange, QUEUE_POSTS_TO_GROUP_BY);
 }
 
 fn publish_end_posts(exchange: &Exchange) {
-    let msg_end = MessagePosts {
-        opcode: MESSAGE_OPCODE_END,
-        payload: None,
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_end).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_FILTER_SCORE,
-        ))
-        .unwrap();
+    middleware_send_msg_end(exchange, QUEUE_POSTS_TO_FILTER_SCORE);
 }
 
 pub fn handle_post_end(exchange: &Exchange, logger: Logger) {
