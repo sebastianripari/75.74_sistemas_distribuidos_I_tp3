@@ -68,9 +68,11 @@ fn main() {
                 let payload = msg.payload;
 
                 match opcode {
+                    MESSAGE_OPCODE_END => {
+                        end = true;
+                    }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_score_avg(payload.unwrap(), &logger, &mut posts, &exchange);
-                        end = true;
                     }
                     _ => {}
                 }

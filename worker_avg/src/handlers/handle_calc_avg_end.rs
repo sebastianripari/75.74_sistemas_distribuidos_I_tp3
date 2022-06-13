@@ -1,17 +1,17 @@
 use amiquip::{Exchange};
 
 use crate::{
-    utils::{logger::Logger, middleware::middleware_send_msg}, constants::queues::{AVG_TO_FILTER_SCORE, QUEUE_TO_CLIENT}, messages::outbound::message_client::Data,
+    utils::{logger::Logger, middleware::{middleware_send_msg, middleware_send_msg_end}}, constants::queues::{AVG_TO_FILTER_SCORE, QUEUE_TO_CLIENT}, messages::outbound::message_client::Data,
 };
 
 fn publish_score_avg(exchange: &Exchange, score_avg: f32) {
     middleware_send_msg(exchange, &score_avg, AVG_TO_FILTER_SCORE);
+    middleware_send_msg_end(exchange, AVG_TO_FILTER_SCORE);
 
-    let payload = Data{
-        key: "posts_score__avg".to_string(),
+    middleware_send_msg(exchange, &Data{
+        key: "posts_score_avg".to_string(),
         value: score_avg.to_string()
-    };
-    middleware_send_msg(exchange, &payload, QUEUE_TO_CLIENT)
+    }, QUEUE_TO_CLIENT);
 }
 
 pub fn handle_calc_avg_end(exchange: &Exchange, logger: &Logger, score_sum: u64, score_count: usize) {
