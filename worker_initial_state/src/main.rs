@@ -9,7 +9,7 @@ use utils::{
     middleware::{
         middleware_connect, middleware_consumer_end, middleware_create_channel,
         middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
-        middleware_send_msg_end, middleware_declare_queues,
+        middleware_send_msg_end, middleware_declare_queues, middleware_end_reached, Message,
     },
 };
 
@@ -43,25 +43,34 @@ fn main() {
     let mut n_comment_received: usize = 0;
 
     let mut end = false;
-    let mut n_end = 0;
+
+    let mut n_end_posts = 0;
+    let mut n_end_comments = 0;
 
     for message in consumer.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
                 let body = String::from_utf8_lossy(&delivery.body);
-                let splited: Vec<&str> = body.split('|').collect();
+                let msg: Message<String> = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
+                
+                let payload_ = payload.unwrap();
+                let splited: Vec<&str> = payload_.split('|').collect();
                 let opcode = splited[0].parse::<u8>().unwrap();
                 let payload = splited[1..].join("|");
 
                 match opcode {
                     OPCODE_POST_END => {
-                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
-                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
-                        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
+                        if middleware_end_reached(&mut n_end_posts) {
+                            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
+                            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
+                            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
+                        }
                     }
                     OPCODE_COMMENT_END => {
                         if middleware_consumer_end(
-                            &mut n_end,
+                            &mut n_end_comments,
                             &exchange,
                             [QUEUE_COMMENTS_TO_MAP].to_vec(),
                         ) {

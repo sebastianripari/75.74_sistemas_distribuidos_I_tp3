@@ -2,25 +2,28 @@ use std::sync::mpsc::Receiver;
 
 use crate::{
     constants::queues::QUEUE_TO_CLIENT,
-    utils::{logger::Logger, rabbitmq::rabbitmq_connect},
+    utils::{
+        logger::Logger,
+        middleware::{
+            middleware_connect, middleware_create_channel, middleware_create_consumer,
+            middleware_declare_queue,
+        },
+    },
 };
 use crate::{
     handlers::handle::handle,
     messages::{inbound::message::Message, opcodes::MESSAGE_OPCODE_NORMAL},
     utils::socket::SocketWriter,
 };
-use amiquip::{ConsumerMessage, ConsumerOptions, QueueDeclareOptions};
+use amiquip::ConsumerMessage;
 
 pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let queue = channel
-        .queue_declare(QUEUE_TO_CLIENT, QueueDeclareOptions::default())
-        .unwrap();
-    let consumer = queue.consume(ConsumerOptions::default()).unwrap();
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let queue = middleware_declare_queue(&channel, QUEUE_TO_CLIENT);
+    let consumer = middleware_create_consumer(&queue);
 
     if let Ok(mut client) = clients.recv() {
-
         let mut best_students_memes_url_handled = false;
         let mut posts_score_avg_handled = false;
         let mut meme_with_best_sentiment_handled = false;
@@ -61,7 +64,5 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 }

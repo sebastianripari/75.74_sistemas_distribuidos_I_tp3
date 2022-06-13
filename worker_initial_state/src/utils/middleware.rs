@@ -162,7 +162,7 @@ pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue
 }
 
 // detect if the producer finished
-fn middleware_end_reached(n_end: &mut usize) -> bool {
+pub fn middleware_end_reached(n_end: &mut usize) -> bool {
     *n_end += 1;
 
     let n_producers = get_n_producers();

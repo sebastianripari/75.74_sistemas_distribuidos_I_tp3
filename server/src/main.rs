@@ -13,7 +13,10 @@ use std::{
     thread,
     time::Duration,
 };
-use utils::{logger::logger_create, rabbitmq::rabbitmq_connect};
+use utils::logger::logger_create;
+use utils::middleware::{
+    middleware_connect, middleware_create_channel, middleware_create_exchange, middleware_send_msg,
+};
 
 mod client_responser;
 mod constants;
@@ -22,6 +25,7 @@ mod messages;
 mod utils;
 
 const PORT_DEFAULT: &str = "12345";
+const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT_END: u8 = 3;
 
 fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
@@ -39,11 +43,15 @@ fn get_n_consumers() -> Vec<usize> {
     }
     let n_consumers: Vec<&str>;
     n_consumers = value.split(',').collect();
-    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_consumers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 fn main() {
     let logger = logger_create();
+    let logger_clone = logger.clone();
     logger.info("start".to_string());
 
     let cleaner;
@@ -59,20 +67,13 @@ fn main() {
         port = p;
     }
 
-    let consumers = get_n_consumers();
-
     let (sender_clients, receiver_clients) = mpsc::channel();
-
-    let logger_clone = logger.clone();
-
-    // wait rabbitmq
-    thread::sleep(Duration::from_secs(30));
 
     let client_handler = thread::spawn(move || client_responser(&logger_clone, receiver_clients));
 
-    let mut rabbitmq_connection = rabbitmq_connect(&logger);
-    let channel = rabbitmq_connection.open_channel(None).unwrap();
-    let exchange = Exchange::direct(&channel);
+    let mut connection = middleware_connect(&logger);
+    let channel = middleware_create_channel(&mut connection);
+    let exchange = middleware_create_exchange(&channel);
 
     let listener;
     logger.info(format!("binding on 172.25.125.2:{}", port));
@@ -90,8 +91,6 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
-    let mut end = false;
-
     for stream_result in listener.incoming() {
         match stream_result {
             Ok(stream) => {
@@ -104,28 +103,34 @@ fn main() {
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-                        exchange
-                            .publish(Publish::new(msg.as_bytes(), QUEUE_INITIAL_STATE))
-                            .unwrap();
 
-                        if msg == format!("{}|", OPCODE_COMMENT_END) {
-                            end = true;
+                        if msg == format!("{}|", OPCODE_POST_END) {
+                            //for n in consumers {
+                                for _ in 0..2 {
+                                    middleware_send_msg(
+                                        &exchange,
+                                        &format!("{}|", OPCODE_POST_END),
+                                        QUEUE_INITIAL_STATE,
+                                    )
+                                }
+                            //}
                         }
 
-                        if end {
-                            for n in consumers {
-                                for _ in 0..n {
-                                    exchange
-                                        .publish(Publish::new(
-                                            format!("{}|", OPCODE_COMMENT_END).as_bytes(),
-                                            QUEUE_INITIAL_STATE,
-                                        ))
-                                        .unwrap();
+                        if msg == format!("{}|", OPCODE_COMMENT_END) {
+                            //for n in consumers {
+                                for _ in 0..2 {
+                                    middleware_send_msg(
+                                        &exchange,
+                                        &format!("{}|", OPCODE_COMMENT_END),
+                                        QUEUE_INITIAL_STATE,
+                                    )
                                 }
-                            }
+                            //}
                             sender_signal_clone.send(()).unwrap();
                             break;
                         }
+
+                        middleware_send_msg(&exchange, &msg, QUEUE_INITIAL_STATE);
                     }
                 }
                 break;
@@ -144,9 +149,7 @@ fn main() {
         }
     }
 
-    if let Ok(_) = rabbitmq_connection.close() {
-        logger.info("rabbitmq connection closed".to_string())
-    }
+    connection.close().unwrap();
 
     if let Ok(_) = client_handler.join() {
         logger.info("client handler closed".to_string());

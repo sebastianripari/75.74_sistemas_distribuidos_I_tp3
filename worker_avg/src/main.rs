@@ -1,12 +1,12 @@
 use amiquip::ConsumerMessage;
-use constants::queues::QUEUE_POSTS_TO_AVG;
+use constants::queues::{QUEUE_POSTS_TO_AVG, AVG_TO_FILTER_SCORE, QUEUE_TO_CLIENT};
 use handlers::handle_calc_avg::handle_calc_avg;
-use handlers::handle_calc_avg_end::handle_calc_avg_end;
+use messages::outbound::message_client::Data;
 use utils::{
     logger::logger_create,
     middleware::{
         middleware_connect, middleware_create_channel, middleware_create_consumer,
-        middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+        middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL, middleware_consumer_end, middleware_send_msg, middleware_end_reached, middleware_send_msg_end,
     },
 };
 
@@ -27,6 +27,7 @@ fn main() {
 
     let mut n_processed: usize = 0;
     let mut end = false;
+    let mut n_end = 0;
 
     let mut score_count: usize = 0;
     let mut score_sum: u64 = 0;
@@ -41,8 +42,19 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        handle_calc_avg_end(&exchange, &logger, score_sum, score_count);
-                        end = true;
+                        let score_avg: f32 = score_sum as f32 / score_count as f32;
+
+                        end = middleware_end_reached(&mut n_end);
+                        if end {
+
+                            middleware_send_msg(&exchange, &Data{
+                                key: "posts_score_avg".to_string(),
+                                value: score_avg.to_string()
+                            }, QUEUE_TO_CLIENT);
+
+                            middleware_send_msg(&exchange, &score_avg, AVG_TO_FILTER_SCORE);
+                            middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE)
+                        }
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_calc_avg(
