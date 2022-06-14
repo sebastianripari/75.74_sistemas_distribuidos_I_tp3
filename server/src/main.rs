@@ -80,7 +80,6 @@ fn main() {
     let msg_comments_end: String = format!("{}|", OPCODE_COMMENT_END);
 
     let mut n_end = 0;
-    let mut end = false;
 
     for stream_result in listener.incoming() {
         match stream_result {

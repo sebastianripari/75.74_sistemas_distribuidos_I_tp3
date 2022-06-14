@@ -25,7 +25,6 @@ mod utils;
 const OPCODE_POST: u8 = 0;
 const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT: u8 = 2;
-const OPCODE_COMMENT_END: u8 = 3;
 
 pub const LOG_LEVEL: &str = "debug";
 pub const LOG_RATE: usize = 100000;

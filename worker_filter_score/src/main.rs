@@ -6,7 +6,7 @@ use messages::{
     inbound::{data_post_score_url::{DataPostScoreUrl}},
     opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
 };
-use utils::{middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message}, logger::logger_create};
+use utils::{middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message, middleware_consumer_end}, logger::logger_create};
 
 mod entities;
 mod handlers;
@@ -26,9 +26,12 @@ fn main() {
     let consumer_score_avg = middleware_create_consumer(&queue_score_avg);
     let exchange = middleware_create_exchange(&channel);
 
-    let mut end = false;
+    let mut n_end_posts = 0;
+    let mut n_end_avg = 0;
     let mut n_processed = 0;
     let mut posts = Vec::new();
+    
+    let mut end = false;
 
     for message in consumer_posts.receiver().iter() {
         match message {
@@ -40,7 +43,9 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        end = true;
+                        if middleware_consumer_end(&mut n_end_posts, &exchange, [].to_vec(), 0) {
+                            end = true;
+                        }
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_posts(payload.unwrap(), &mut n_processed, &logger, &mut posts);
@@ -69,7 +74,9 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        end = true;
+                        if middleware_consumer_end(&mut n_end_avg, &exchange, [].to_vec(), 1) {
+                            end = true;
+                        }
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_score_avg(payload.unwrap(), &logger, &mut posts, &exchange);
