@@ -1,12 +1,11 @@
-use amiquip::{Exchange, Publish};
+use amiquip::{Exchange};
 
 use crate::{
     entities::comment::Comment,
     messages::{
-        opcodes::MESSAGE_OPCODE_NORMAL,
-        outbound::message_comments::{CommentData, MessageComments},
+        outbound::message_comments::{CommentData},
     },
-    utils::logger::Logger,
+    utils::{logger::Logger, middleware::middleware_send_msg},
     LOG_RATE, QUEUE_COMMENTS_TO_MAP,
 };
 
@@ -21,17 +20,7 @@ fn publish_comments(exchange: &Exchange, comments: &Vec<Comment>) {
         .rev()
         .collect();
 
-    let msg_comments = MessageComments {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload_comments),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_comments).unwrap().as_bytes(),
-            QUEUE_COMMENTS_TO_MAP,
-        ))
-        .unwrap();
+    middleware_send_msg(exchange, &payload_comments, QUEUE_COMMENTS_TO_MAP);
 }
 
 pub fn handle_comments(

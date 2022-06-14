@@ -9,6 +9,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=1  # socket receive
       - N_CONSUMERS=2, # 2 worker_initial_state
     entrypoint: /tp2/target/release/server
     networks:

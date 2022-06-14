@@ -14,7 +14,8 @@ use std::{
 };
 use utils::logger::logger_create;
 use utils::middleware::{
-    middleware_connect, middleware_create_channel, middleware_create_exchange, middleware_send_msg,
+    middleware_connect, middleware_consumer_end, middleware_create_channel,
+    middleware_create_exchange, middleware_send_msg,
 };
 
 mod client_responser;
@@ -89,8 +90,11 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
-    let MSG_POSTS_END: String = format!("{}|", OPCODE_POST_END);
-    let MSG_COMMENTS_END: String = format!("{}|", OPCODE_COMMENT_END);
+    let msg_posts_end: String = format!("{}|", OPCODE_POST_END);
+    let msg_comments_end: String = format!("{}|", OPCODE_COMMENT_END);
+
+    let mut n_end = 0;
+    let mut end = false;
 
     for stream_result in listener.incoming() {
         match stream_result {
@@ -104,31 +108,25 @@ fn main() {
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-
-                        if msg == MSG_POSTS_END {
+                        
+                        if msg == msg_posts_end {
                             //for n in consumers {
-                                for _ in 0..2 {
-                                    middleware_send_msg(
-                                        &exchange,
-                                        &MSG_POSTS_END,
-                                        QUEUE_INITIAL_STATE,
-                                    )
-                                }
+                            for _ in 0..2 {
+                                middleware_send_msg(&exchange, &msg_posts_end, QUEUE_INITIAL_STATE)
+                            }
                             //}
                         }
 
-                        if msg == MSG_COMMENTS_END {
-                            //for n in consumers {
-                                for _ in 0..2 {
-                                    middleware_send_msg(
-                                        &exchange,
-                                        &MSG_COMMENTS_END,
-                                        QUEUE_INITIAL_STATE,
-                                    )
-                                }
-                            //}
-                            sender_signal_clone.send(()).unwrap();
-                            break;
+                        if msg == msg_comments_end {
+                            end = middleware_consumer_end(
+                                &mut n_end,
+                                &exchange,
+                                [QUEUE_INITIAL_STATE].to_vec(),
+                            );
+                            if end {
+                                sender_signal_clone.send(()).unwrap();
+                                break;
+                            }
                         }
 
                         middleware_send_msg(&exchange, &msg, QUEUE_INITIAL_STATE);

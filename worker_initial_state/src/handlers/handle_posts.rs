@@ -1,30 +1,17 @@
-use amiquip::{Exchange, Publish};
+use amiquip::{Exchange};
 
 use crate::{
     entities::post::Post,
-    messages::opcodes::MESSAGE_OPCODE_NORMAL,
     messages::outbound::{
-        message_posts::{MessagePosts, PostData},
-        message_scores::MessageScores,
+        message_posts::{PostData},
     },
-    utils::logger::Logger,
+    utils::{logger::Logger, middleware::{middleware_send_msg}},
     LOG_RATE, QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY,
 };
 
 fn publish_scores(exchange: &Exchange, posts: &Vec<Post>) {
-    let payload_scores = posts.iter().map(|post| post.score).rev().collect();
-
-    let msg_scores = MessageScores {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload_scores),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_scores).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_AVG,
-        ))
-        .unwrap();
+    let payload_scores: Vec<i32> = posts.iter().map(|post| post.score).rev().collect();
+    middleware_send_msg(exchange, &payload_scores, QUEUE_POSTS_TO_AVG);
 }
 
 fn publish_posts(exchange: &Exchange, posts: &Vec<Post>) {
@@ -38,24 +25,8 @@ fn publish_posts(exchange: &Exchange, posts: &Vec<Post>) {
         .rev()
         .collect();
 
-    let msg_posts = MessagePosts {
-        opcode: MESSAGE_OPCODE_NORMAL,
-        payload: Some(payload_posts),
-    };
-
-    exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_posts).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_FILTER_SCORE,
-        ))
-        .unwrap();
-
-        exchange
-        .publish(Publish::new(
-            serde_json::to_string(&msg_posts).unwrap().as_bytes(),
-            QUEUE_POSTS_TO_GROUP_BY,
-        ))
-        .unwrap();
+    middleware_send_msg(exchange, &payload_posts, QUEUE_POSTS_TO_FILTER_SCORE);
+    middleware_send_msg(exchange, &payload_posts, QUEUE_POSTS_TO_GROUP_BY);
 }
 
 pub fn handle_posts(
