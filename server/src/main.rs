@@ -1,6 +1,5 @@
 use crate::client_responser::client_responser;
 use crate::utils::socket::{SocketReader, SocketWriter};
-use amiquip::{Exchange, Publish};
 use constants::queues::QUEUE_INITIAL_STATE;
 use std::sync::mpsc;
 use std::{
@@ -68,7 +67,6 @@ fn main() {
     }
 
     let (sender_clients, receiver_clients) = mpsc::channel();
-
     let client_handler = thread::spawn(move || client_responser(&logger_clone, receiver_clients));
 
     let mut connection = middleware_connect(&logger);
@@ -91,6 +89,9 @@ fn main() {
         panic!("could not set listener as non blocking")
     }
 
+    let MSG_POSTS_END: String = format!("{}|", OPCODE_POST_END);
+    let MSG_COMMENTS_END: String = format!("{}|", OPCODE_COMMENT_END);
+
     for stream_result in listener.incoming() {
         match stream_result {
             Ok(stream) => {
@@ -104,24 +105,24 @@ fn main() {
                 loop {
                     if let Some(msg) = socket_reader.receive() {
 
-                        if msg == format!("{}|", OPCODE_POST_END) {
+                        if msg == MSG_POSTS_END {
                             //for n in consumers {
                                 for _ in 0..2 {
                                     middleware_send_msg(
                                         &exchange,
-                                        &format!("{}|", OPCODE_POST_END),
+                                        &MSG_POSTS_END,
                                         QUEUE_INITIAL_STATE,
                                     )
                                 }
                             //}
                         }
 
-                        if msg == format!("{}|", OPCODE_COMMENT_END) {
+                        if msg == MSG_COMMENTS_END {
                             //for n in consumers {
                                 for _ in 0..2 {
                                     middleware_send_msg(
                                         &exchange,
-                                        &format!("{}|", OPCODE_COMMENT_END),
+                                        &MSG_COMMENTS_END,
                                         QUEUE_INITIAL_STATE,
                                     )
                                 }
