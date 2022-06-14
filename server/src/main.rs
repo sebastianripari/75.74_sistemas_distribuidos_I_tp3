@@ -15,7 +15,7 @@ use std::{
 use utils::logger::logger_create;
 use utils::middleware::{
     middleware_connect, middleware_consumer_end, middleware_create_channel,
-    middleware_create_exchange, middleware_send_msg,
+    middleware_create_exchange, middleware_send_msg, middleware_send_msg_all_consumers,
 };
 
 mod client_responser;
@@ -33,20 +33,6 @@ fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>
     if let Ok(mut running) = running_lock.write() {
         *running = false;
     }
-}
-
-// get the numbers of consumers from ENV
-fn get_n_consumers() -> Vec<usize> {
-    let mut value = "1".to_string();
-    if let Ok(v) = env::var("N_CONSUMERS") {
-        value = v;
-    }
-    let n_consumers: Vec<&str>;
-    n_consumers = value.split(',').collect();
-    n_consumers
-        .iter()
-        .flat_map(|x| x.parse::<usize>())
-        .collect()
 }
 
 fn main() {
@@ -108,22 +94,21 @@ fn main() {
 
                 loop {
                     if let Some(msg) = socket_reader.receive() {
-                        
+
                         if msg == msg_posts_end {
-                            //for n in consumers {
-                            for _ in 0..2 {
-                                middleware_send_msg(&exchange, &msg_posts_end, QUEUE_INITIAL_STATE)
-                            }
-                            //}
+                            middleware_send_msg_all_consumers(
+                                &exchange,
+                                &msg_posts_end,
+                                [QUEUE_INITIAL_STATE].to_vec(),
+                            );
                         }
 
                         if msg == msg_comments_end {
-                            end = middleware_consumer_end(
+                            if  middleware_consumer_end(
                                 &mut n_end,
                                 &exchange,
                                 [QUEUE_INITIAL_STATE].to_vec(),
-                            );
-                            if end {
+                            ) {
                                 sender_signal_clone.send(()).unwrap();
                                 break;
                             }

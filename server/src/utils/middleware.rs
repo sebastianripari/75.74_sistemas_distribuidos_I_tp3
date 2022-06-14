@@ -2,7 +2,7 @@ use super::logger::Logger;
 use amiquip::{
     Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, Queue, QueueDeclareOptions,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{env, thread, time::Duration};
 
 /*
@@ -50,7 +50,10 @@ fn get_n_consumers() -> Vec<usize> {
     }
     let n_consumers: Vec<&str>;
     n_consumers = value.split(',').collect();
-    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_consumers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 // makes the connection with RabbitMQ
@@ -118,7 +121,7 @@ pub const MESSAGE_OPCODE_NORMAL: u8 = 1;
 #[derive(Serialize, Deserialize)]
 pub struct Message<T: Serialize> {
     pub opcode: u8,
-    pub payload: Option<T>
+    pub payload: Option<T>,
 }
 
 // send message end to other process, pushing to a queue
@@ -138,7 +141,6 @@ pub fn middleware_send_msg_end(exchange: &Exchange, queue_name: &str) {
 
 // send message to other process, pushing to a queue
 pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue_name: &str) {
-
     let message = Message {
         opcode: MESSAGE_OPCODE_NORMAL,
         payload: Some(payload),
@@ -150,6 +152,22 @@ pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue
             queue_name,
         ))
         .unwrap();
+}
+
+pub fn middleware_send_msg_all_consumers<T: Serialize>(
+    exchange: &Exchange,
+    payload: &T,
+    queues: Vec<&str>,
+) {
+    let consumers = get_n_consumers();
+
+    for n in consumers {
+        for queue in queues.iter() {
+            for _ in 0..n {
+                middleware_send_msg(exchange, payload, queue);
+            }
+        }
+    }
 }
 
 // detect if the producer finished
@@ -174,9 +192,8 @@ pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: V
             }
         }
 
-        return true
+        return true;
     }
 
-    return false
+    return false;
 }
-
