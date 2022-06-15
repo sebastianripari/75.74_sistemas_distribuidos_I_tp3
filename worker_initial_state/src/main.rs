@@ -58,13 +58,11 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        if middleware_consumer_end(
+                        end = middleware_consumer_end(
                             &mut n_end_comments,
                             &exchange,
-                            [QUEUE_COMMENTS_TO_MAP, QUEUE_POSTS_TO_AVG].to_vec(),
-                        ) {
-                            end = true;
-                        }
+                            [QUEUE_COMMENTS_TO_MAP].to_vec(),
+                        );
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         let payload_ = payload.unwrap();

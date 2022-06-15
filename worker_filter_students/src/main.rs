@@ -41,13 +41,11 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        if middleware_consumer_end(
+                        end = middleware_consumer_end(
                             &mut n_end,
                             &exchange,
                             [QUEUE_COMMENTS_TO_JOIN].to_vec(),
-                        ) {
-                            end = true;
-                        }
+                        );
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(payload.unwrap(), &mut n_processed, &logger, &exchange);

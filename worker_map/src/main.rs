@@ -36,18 +36,14 @@ fn main() {
             let payload = msg.payload;
 
             if opcode == MESSAGE_OPCODE_END {
-                logger.info(format!("ending {}", n_end));
-                if middleware_consumer_end(
+                end = middleware_consumer_end(
                     &mut n_end,
                     &exchange,
                     [
                         QUEUE_COMMENTS_TO_FILTER_STUDENTS,
                         QUEUE_COMMENTS_TO_GROUP_BY,
                     ].to_vec()
-                ) {
-                    logger.info("ending".to_string());
-                    end = true;
-                }
+                );
             }
 
             if opcode == MESSAGE_OPCODE_NORMAL {

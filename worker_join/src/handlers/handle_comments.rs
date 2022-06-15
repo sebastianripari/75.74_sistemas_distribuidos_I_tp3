@@ -19,10 +19,6 @@ pub fn handle_comments(
     *n += 1;
 
     if let Some(post_url) = posts.get(&payload.post_id) {
-        logger.debug(format!(
-            "join ok, id: {}, url: {}",
-            payload.post_id, post_url
-        ));
 
         let payload = DataPostUrl {
             key: "best_students_memes_url".to_string(),

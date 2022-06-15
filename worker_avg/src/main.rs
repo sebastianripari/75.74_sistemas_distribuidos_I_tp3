@@ -44,16 +44,15 @@ fn main() {
                     MESSAGE_OPCODE_END => {
                         let score_avg: f32 = score_sum as f32 / score_count as f32;
 
-                        end = middleware_end_reached(&mut n_end);
-                        if end {
-
+                        if middleware_end_reached(&mut n_end) {
                             middleware_send_msg(&exchange, &Data{
                                 key: "posts_score_avg".to_string(),
                                 value: score_avg.to_string()
                             }, QUEUE_TO_CLIENT);
 
                             middleware_send_msg(&exchange, &score_avg, AVG_TO_FILTER_SCORE);
-                            middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE)
+                            middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE);
+                            end = true;
                         }
                     }
                     MESSAGE_OPCODE_NORMAL => {
