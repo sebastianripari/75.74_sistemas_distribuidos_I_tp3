@@ -137,6 +137,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=1,6 # 2 worker_filter_score, 2 worker_filter_students
     depends_on:
       - server
     networks:

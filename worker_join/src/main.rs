@@ -7,7 +7,7 @@ use crate::messages::inbound::data_post_url::DataPostUrl;
 use crate::messages::inbound::data_comment::DataComment;
 use crate::messages::opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL};
 use crate::utils::logger::logger_create;
-use crate::utils::middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message};
+use crate::utils::middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message, middleware_consumer_end};
 
 mod entities;
 mod handlers;
@@ -30,6 +30,7 @@ fn main() {
     let mut n_post_processed = 0;
     let mut posts = HashMap::new();
     let mut end = false;
+    let mut n_end = 0;
     for message in consumer_posts.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -40,8 +41,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        logger.info("doing end posts".to_string());
-                        end = true;
+                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 0);
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_posts(payload.unwrap(), &mut n_post_processed, &mut posts, &logger)
@@ -61,7 +61,9 @@ fn main() {
 
     let mut n_comments_processed = 0;
     let mut n_joins = 0;
-    let mut end = false;
+
+    end = false;
+    n_end = 0;
     for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -72,9 +74,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        logger.info("doing end".to_string());
-                        logger.info(format!("n joins: {}", n_joins));
-                        end = true;
+                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 1);
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
