@@ -181,14 +181,13 @@ fn middleware_end_reached(n_end: &mut usize) -> bool {
 
 // send end to the consumer
 pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>) -> bool {
+    
     if middleware_end_reached(n_end) {
         let consumers = get_n_consumers();
 
-        for n in consumers {
-            for queue in queues.iter() {
-                for _ in 0..n {
-                    middleware_send_msg_end(exchange, queue);
-                }
+        for (i, n) in consumers.iter().enumerate() {
+            for _ in 0..*n {
+                middleware_send_msg_end(exchange, queues[i]);
             }
         }
 
