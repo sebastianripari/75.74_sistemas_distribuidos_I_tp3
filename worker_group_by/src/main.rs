@@ -1,12 +1,19 @@
-use amiquip::{ConsumerMessage};
+use amiquip::ConsumerMessage;
 use constants::queues::{QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_POSTS_TO_GROUP_BY, QUEUE_TO_CLIENT};
 use handlers::{handle_comments::handle_comments, handle_posts::handle_posts};
 use messages::{
     inbound::{data_comment_sentiment::DataCommentSentiment, data_post_url::DataPostUrl},
-    outbound::data_best_url::DataBestUrl
+    outbound::data_best_url::DataBestUrl,
 };
-use std::{collections::HashMap};
-use utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, middleware_send_msg, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}};
+use std::collections::HashMap;
+use utils::{
+    logger::logger_create,
+    middleware::{
+        middleware_connect, middleware_consumer_end, middleware_create_channel,
+        middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
+        middleware_send_msg, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+    },
+};
 
 mod constants;
 mod handlers;
@@ -26,6 +33,7 @@ fn main() {
     let exchange = middleware_create_exchange(&channel);
 
     let mut end = false;
+    let mut n_end = 0;
     let mut n_posts_processed = 0;
     let mut posts = HashMap::new();
     for message in consumer_posts.receiver().iter() {
@@ -38,7 +46,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        end = true;
+                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 0);
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_posts(
@@ -64,6 +72,8 @@ fn main() {
     let mut n_comments_processed = 0;
     let mut comments = HashMap::new();
     end = false;
+    n_end = 0;
+
     for message in consumer_comments.receiver().iter() {
         match message {
             ConsumerMessage::Delivery(delivery) => {
@@ -74,7 +84,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        end = true;
+                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 1);
                     }
                     MESSAGE_OPCODE_NORMAL => {
                         handle_comments(
@@ -110,7 +120,7 @@ fn main() {
     let payload = DataBestUrl {
         key: "meme_with_best_sentiment".to_string(),
         value: url,
-    }; 
+    };
 
     middleware_send_msg(&exchange, &payload, QUEUE_TO_CLIENT);
 

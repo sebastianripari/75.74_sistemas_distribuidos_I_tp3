@@ -150,6 +150,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=2,6 # 2 worker_initial_state, 6 worker_map
     depends_on:
       - server
     networks:
