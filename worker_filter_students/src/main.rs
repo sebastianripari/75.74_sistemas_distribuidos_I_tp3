@@ -41,13 +41,11 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        logger.info(format!("ending {}", n_end));
                         if middleware_consumer_end(
                             &mut n_end,
                             &exchange,
                             [QUEUE_COMMENTS_TO_JOIN].to_vec(),
                         ) {
-                            logger.info("ending".to_string());
                             end = true;
                         }
                     }
