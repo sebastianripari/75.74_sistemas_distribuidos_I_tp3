@@ -1,17 +1,22 @@
-use amiquip::{ConsumerMessage};
-use constants::queues::QUEUE_COMMENTS_TO_FILTER_STUDENTS;
-use messages::{
-    inbound::{data_comment_body::{DataCommentBody}},
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}
-};
+use amiquip::ConsumerMessage;
+use constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_JOIN};
 use handlers::handle_comments::handle_comments;
-use handlers::handle_comments_end::handle_comments_end;
-use utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message}};
+use messages::{
+    inbound::data_comment_body::DataCommentBody,
+    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
+};
+use utils::{
+    logger::logger_create,
+    middleware::{
+        middleware_connect, middleware_consumer_end, middleware_create_channel,
+        middleware_create_consumer, middleware_create_exchange, middleware_declare_queue, Message,
+    },
+};
 
+mod constants;
+mod handlers;
 mod messages;
 mod utils;
-mod handlers;
-mod constants;
 
 fn main() {
     let logger = logger_create();
@@ -36,19 +41,18 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
-                        end = handle_comments_end(
+                        logger.info(format!("ending {}", n_end));
+                        if middleware_consumer_end(
                             &mut n_end,
                             &exchange,
-                            &logger
-                        );
+                            [QUEUE_COMMENTS_TO_JOIN].to_vec(),
+                        ) {
+                            logger.info("ending".to_string());
+                            end = true;
+                        }
                     }
                     MESSAGE_OPCODE_NORMAL => {
-                        handle_comments(
-                            payload.unwrap(),
-                            &mut n_processed,
-                            &logger,
-                            &exchange
-                        );
+                        handle_comments(payload.unwrap(), &mut n_processed, &logger, &exchange);
                     }
                     _ => {}
                 }

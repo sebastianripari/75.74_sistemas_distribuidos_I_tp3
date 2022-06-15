@@ -1,12 +1,11 @@
 use amiquip::ConsumerMessage;
-use constants::queues::{QUEUE_COMMENTS_TO_MAP};
+use constants::queues::{QUEUE_COMMENTS_TO_MAP, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY};
 use handlers::handle_comments::handle_comments;
-use handlers::handle_comments_end::handle_end;
 use messages::inbound::data_comments_body_sentiment::{VecDataCommentBodySentiment};
 use utils::logger::logger_create;
 use utils::middleware::{
     middleware_connect, middleware_create_channel, middleware_create_consumer,
-    middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+    middleware_create_exchange, middleware_declare_queue, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL, middleware_consumer_end,
 };
 
 mod constants;
@@ -37,7 +36,18 @@ fn main() {
             let payload = msg.payload;
 
             if opcode == MESSAGE_OPCODE_END {
-                end = handle_end(&exchange, &mut n_end);
+                logger.info(format!("ending {}", n_end));
+                if middleware_consumer_end(
+                    &mut n_end,
+                    &exchange,
+                    [
+                        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                        QUEUE_COMMENTS_TO_GROUP_BY,
+                    ].to_vec()
+                ) {
+                    logger.info("ending".to_string());
+                    end = true;
+                }
             }
 
             if opcode == MESSAGE_OPCODE_NORMAL {

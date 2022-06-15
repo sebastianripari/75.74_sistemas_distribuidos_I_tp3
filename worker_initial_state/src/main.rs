@@ -61,7 +61,7 @@ fn main() {
                         if middleware_consumer_end(
                             &mut n_end_comments,
                             &exchange,
-                            [QUEUE_COMMENTS_TO_MAP].to_vec(),
+                            [QUEUE_COMMENTS_TO_MAP, QUEUE_POSTS_TO_AVG].to_vec(),
                         ) {
                             end = true;
                         }
