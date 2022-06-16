@@ -20,7 +20,17 @@ docker-compose-up: docker-image
 .PHONY: docker-compose-up
 
 docker-compose-down:
-	docker-compose -f docker-compose-dev.yaml stop -t 1
+	docker-compose -f docker-compose-dev.yaml stop -t 5 client
+	docker-compose -f docker-compose-dev.yaml stop -t 5 server
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_initial_state
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_avg 
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_map 
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_filter_score
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_filter_students
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_join  
+	docker-compose -f docker-compose-dev.yaml stop -t 5 worker_group_by
+	docker-compose -f docker-compose-dev.yaml stop -t 10 rabbitmq 
+
 	docker-compose -f docker-compose-dev.yaml down
 .PHONY: docker-compose-down
 
