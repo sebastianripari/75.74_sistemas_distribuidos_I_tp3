@@ -2,7 +2,7 @@ use super::logger::Logger;
 use amiquip::{
     Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, Queue, QueueDeclareOptions,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{env, thread, time::Duration};
 
 /*
@@ -41,7 +41,10 @@ fn get_n_producers() -> Vec<usize> {
     }
     let n_producers: Vec<&str>;
     n_producers = value.split(',').collect();
-    n_producers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_producers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 // get the numbers of consumers from ENV
@@ -52,7 +55,10 @@ fn get_n_consumers() -> Vec<usize> {
     }
     let n_consumers: Vec<&str>;
     n_consumers = value.split(',').collect();
-    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_consumers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 // makes the connection with RabbitMQ
@@ -120,7 +126,7 @@ pub const MESSAGE_OPCODE_NORMAL: u8 = 1;
 #[derive(Serialize, Deserialize)]
 pub struct Message<T: Serialize> {
     pub opcode: u8,
-    pub payload: Option<T>
+    pub payload: Option<T>,
 }
 
 // send message end to other process, pushing to a queue
@@ -164,8 +170,12 @@ fn middleware_end_reached(n_end: &mut usize, producer_index: usize) -> bool {
 }
 
 // send end to the consumer
-pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>, producer_index: usize) -> bool {
-    
+pub fn middleware_consumer_end(
+    n_end: &mut usize,
+    exchange: &Exchange,
+    queues: Vec<&str>,
+    producer_index: usize,
+) -> bool {
     if middleware_end_reached(n_end, producer_index) {
         let consumers = get_n_consumers();
 
@@ -177,9 +187,8 @@ pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: V
             }
         }
 
-        return true
+        return true;
     }
 
-    return false
+    return false;
 }
-
