@@ -29,36 +29,44 @@ fn main() {
     for message in consumer.receiver().iter() {
         let mut end = false;
 
-        if let ConsumerMessage::Delivery(delivery) = message {
-            let body = String::from_utf8_lossy(&delivery.body);
-            let msg: Message<VecDataCommentBodySentiment> = serde_json::from_str(&body).unwrap();
-            let opcode = msg.opcode;
-            let payload = msg.payload;
+        match message {
+            ConsumerMessage::Delivery(delivery) => {
+         
+                let body = String::from_utf8_lossy(&delivery.body);
+                let msg: Message<VecDataCommentBodySentiment> = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
 
-            if opcode == MESSAGE_OPCODE_END {
-                end = middleware_consumer_end(
-                    &mut n_end,
-                    &exchange,
-                    [
-                        QUEUE_COMMENTS_TO_FILTER_STUDENTS,
-                        QUEUE_COMMENTS_TO_GROUP_BY,
-                    ].to_vec()
-                );
+                if opcode == MESSAGE_OPCODE_END {
+                    end = middleware_consumer_end(
+                        &mut n_end,
+                        &exchange,
+                        [
+                            QUEUE_COMMENTS_TO_FILTER_STUDENTS,
+                            QUEUE_COMMENTS_TO_GROUP_BY,
+                        ].to_vec()
+                    );
+                }
+
+                if opcode == MESSAGE_OPCODE_NORMAL {
+                    handle_comments(&mut payload.unwrap(), &mut n_processed, &exchange, &logger);
+                }
+
+                consumer.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
             }
-
-            if opcode == MESSAGE_OPCODE_NORMAL {
-                handle_comments(&mut payload.unwrap(), &mut n_processed, &exchange, &logger);
-            }
-
-            consumer.ack(delivery).unwrap();
-
-            if end {
+            _ => {
                 break;
             }
         }
     }
 
-    connection.close().unwrap();
+    if let Ok(_) = connection.close() {
+        logger.info("connection closed".to_string());
+    }
 
     logger.info("shutdown".to_string());
 }
