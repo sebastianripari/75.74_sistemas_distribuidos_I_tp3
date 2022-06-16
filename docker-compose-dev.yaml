@@ -74,7 +74,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
-      - N_CONSUMERS=${N_WORKER_FILTER_SCORE},
+      - N_CONSUMERS=1
     depends_on:
       - server  
     networks:
@@ -119,7 +119,7 @@ services:
     entrypoint: /tp2/target/release/worker_filter_score
     deploy:
       mode: replicated
-      replicas: ${N_WORKER_FILTER_SCORE}
+      replicas: 1
     environment:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
@@ -139,7 +139,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=${N_WORKER_FILTER_SCORE},${N_WORKER_FILTER_STUDENTS}
+      - N_PRODUCERS=1,${N_WORKER_FILTER_STUDENTS}
     depends_on:
       - server
     networks:
