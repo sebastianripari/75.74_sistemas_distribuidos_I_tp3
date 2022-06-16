@@ -11,7 +11,7 @@ pub fn handle_posts(
     *n += payload.len();
 
     for value in payload {
-        if value.url != "" {
+        if !value.url.is_empty() {
             posts.insert(value.post_id, value.url);
         }
     }

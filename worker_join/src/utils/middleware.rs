@@ -59,7 +59,7 @@ fn get_n_consumers() -> Vec<usize> {
 // iterations: try and wait each one seconds, because RabbitMQ takes a bit to wake up
 pub fn middleware_connect(logger: &Logger) -> Connection {
     loop {
-        match middleware_connect_(&logger) {
+        match middleware_connect_(logger) {
             Ok(value) => {
                 return value;
             }
@@ -79,15 +79,15 @@ fn middleware_connect_(logger: &Logger) -> Result<Connection, ()> {
             "amqp://{}:{}@rabbitmq:5672",
             rabbitmq_user, rabbitmq_password
         )
-        .to_owned(),
+        ,
     ) {
         Ok(connection) => {
             logger.info("connected with rabbitmq".to_string());
-            return Ok(connection);
+            Ok(connection)
         }
         Err(_) => {
             logger.debug("could not connect with rabbitmq".to_string());
-            return Err(());
+            Err(())
         }
     }
 }
@@ -111,7 +111,7 @@ pub fn middleware_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
 
 // makes exchange
 pub fn middleware_create_exchange(channel: &Channel) -> Exchange {
-    Exchange::direct(&channel)
+    Exchange::direct(channel)
 }
 
 pub const MESSAGE_OPCODE_END: u8 = 0;
@@ -180,6 +180,6 @@ pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: V
         return true
     }
 
-    return false
+    false
 }
 
