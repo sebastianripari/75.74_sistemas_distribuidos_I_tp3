@@ -20,7 +20,6 @@ fn handle_receive(socket_reader: &mut SocketReader, logger: &Logger) {
     let mut best_students_memes_url_received = false;
     let mut posts_score_avg_received = false;
     let mut meme_with_best_sentiment_received = false;
-
     
     loop {
         if let Some(key) = socket_reader.receive() {
@@ -100,8 +99,6 @@ fn main() {
 
     logger.info(format!("filename posts: {}", filename_posts));
     logger.info(format!("filename comments: {}", filename_comments));
-
-    //thread::sleep(Duration::from_secs(20));
 
     let logger_clone = logger.clone();
     let receiver = thread::spawn(move || handle_receive(&mut socket_reader, &logger_clone));
