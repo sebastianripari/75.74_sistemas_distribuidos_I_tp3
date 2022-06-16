@@ -55,7 +55,7 @@ fn main() {
                     break;
                 }
             }
-            _ => logger.info("error consuming".to_string()),
+            _ => {},
         }
     }
 
@@ -95,11 +95,13 @@ fn main() {
                     break;
                 }
             }
-            _ => logger.info("error consuming".to_string()),
+            _ => {},
         }
     }
 
-    connection.close().unwrap();
+    if let Ok(_) = connection.close() {
+        logger.info("connection closed".to_string());
+    }
 
     println!("worker join shutdown");
 }
