@@ -19,7 +19,10 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
                         logger.debug(format!("about to send post: {}", post.id));
                         posts.push(post.serialize());
                         if posts.len() == BATCH_POSTS_SIZE {
-                            writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
+                            if let Err(_) = writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))) {
+                                logger.debug("send error".to_string());
+                                return
+                            }
                             n_post_sent = n_post_sent + BATCH_POSTS_SIZE;
                             posts.clear();
                             if n_post_sent % 100000 == 0 {
@@ -36,9 +39,14 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
             logger.debug("could not open file".to_string());
         }
     }
-    writter.send(format!("{}|{}", OPCODE_POST, posts.join("")));
+    if let Err(_) = writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))) {
+        logger.debug("send error".to_string());
+        return
+    }
+    if let Err(_) = writter.send(format!("{}|", OPCODE_POST_END)) {
+        logger.debug("send error".to_string());
+    }
     logger.info("all sent".to_string());
-    writter.send(format!("{}|", OPCODE_POST_END));
 }
 
 pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger: &Logger) {
@@ -53,7 +61,10 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
                         logger.debug(format!("about to send comment: {}", comment.id));
                         comments.push(comment.serialize());
                         if comments.len() == BATCH_COMMENTS_SIZE {
-                            writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join("")));
+                            if let Err(_) = writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))) {
+                                logger.debug("send error".to_string());
+                                break;
+                            }
                             n_comment_sent = n_comment_sent + BATCH_COMMENTS_SIZE;
                             comments.clear();
                             if n_comment_sent % 100000 == 0 {
