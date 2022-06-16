@@ -94,7 +94,9 @@ fn main() {
         }
     }
 
-    connection.close().unwrap();
+    if let Ok(_) = connection.close() {
+        logger.info("connection closed".to_string());
+    }
 
     logger.info("shutdown".to_string());
 }
