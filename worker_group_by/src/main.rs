@@ -119,16 +119,18 @@ fn main() {
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    let url = max.unwrap().1 .2.to_string();
+    if let Some(max_value) = max {
+        let url = max_value.1.2.to_string();
+        let payload = DataBestUrl {
+            key: "meme_with_best_sentiment".to_string(),
+            value: url,
+        };
+        middleware_send_msg(&exchange, &payload, QUEUE_TO_CLIENT);
+    }
 
-    let payload = DataBestUrl {
-        key: "meme_with_best_sentiment".to_string(),
-        value: url,
-    };
-
-    middleware_send_msg(&exchange, &payload, QUEUE_TO_CLIENT);
-
-    connection.close().unwrap();
+    if let Ok(_) = connection.close() {
+        logger.info("connection closed".to_string());
+    }
 
     logger.info("shutdown".to_string());
 }
