@@ -1,14 +1,13 @@
 use std::sync::mpsc::Receiver;
 
 use crate::{
-    constants::queues::QUEUE_TO_CLIENT,
     utils::{
         logger::Logger,
         middleware::{
             middleware_connect, middleware_create_channel, middleware_create_consumer,
-            middleware_declare_queue,
+            middleware_declare_queue, MESSAGE_OPCODE_END,
         },
-    },
+    }, constants::queues::QUEUE_TO_CLIENT,
 };
 use crate::{
     handlers::handle::handle,
@@ -37,6 +36,9 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
                     let payload = msg.payload;
 
                     match opcode {
+                        MESSAGE_OPCODE_END => {
+                            break;
+                        }
                         MESSAGE_OPCODE_NORMAL => {
                             handle(
                                 payload.unwrap(),
@@ -59,10 +61,14 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
                         break;
                     }
                 }
-                _ => {}
+                _ => {
+                    break;
+                }
             }
         }
     }
 
-    connection.close().unwrap();
+    if let Ok(_) = connection.close() {
+        logger.info("[client_responser]: connection closed".to_string());
+    }
 }
