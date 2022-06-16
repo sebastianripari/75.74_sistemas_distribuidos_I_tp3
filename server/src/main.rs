@@ -1,4 +1,5 @@
 use crate::client_responser::client_responser;
+use crate::cleaner_handler::cleaner_handler;
 use crate::utils::socket::{SocketReader, SocketWriter};
 use constants::queues::QUEUE_INITIAL_STATE;
 use std::sync::mpsc;
@@ -6,7 +7,7 @@ use std::{
     env,
     net::TcpListener,
     sync::{
-        mpsc::{channel, Receiver},
+        mpsc::{channel},
         Arc, RwLock,
     },
     thread,
@@ -19,6 +20,7 @@ use utils::middleware::{
 };
 
 mod client_responser;
+mod cleaner_handler;
 mod constants;
 mod handlers;
 mod messages;
@@ -28,31 +30,26 @@ const PORT_DEFAULT: &str = "12345";
 const OPCODE_POST_END: u8 = 1;
 const OPCODE_COMMENT_END: u8 = 3;
 
-fn cleaner_handler(receiver_signal: Receiver<()>, running_lock: Arc<RwLock<bool>>) {
-    receiver_signal.recv().unwrap();
-    if let Ok(mut running) = running_lock.write() {
-        *running = false;
-    }
-}
-
 fn main() {
     let logger = logger_create();
-    let logger_clone = logger.clone();
+    let mut logger_clone = logger.clone();
     logger.info("start".to_string());
 
     let cleaner;
     let (sender_signal, receiver_signal) = channel();
     let sender_signal_clone = sender_signal.clone();
+
     let running_lock = Arc::new(RwLock::new(true));
     let mut running_lock_clone = running_lock.clone();
-    ctrlc::set_handler(move || sender_signal.send(()).unwrap()).unwrap();
-    cleaner = thread::spawn(move || cleaner_handler(receiver_signal, running_lock_clone));
+    ctrlc::set_handler(move || sender_signal.send("end_sigterm").unwrap()).unwrap();
+    cleaner = thread::spawn(move || cleaner_handler(receiver_signal, running_lock_clone, logger_clone));
 
     let mut port = PORT_DEFAULT.to_string();
     if let Ok(p) = env::var("SERVER_PORT") {
         port = p;
     }
 
+    logger_clone = logger.clone();
     let (sender_clients, receiver_clients) = mpsc::channel();
     let client_handler = thread::spawn(move || client_responser(&logger_clone, receiver_clients));
 
@@ -92,28 +89,32 @@ fn main() {
                 sender_clients.send(socket_writer).unwrap();
 
                 loop {
-                    if let Some(msg) = socket_reader.receive() {
-
-                        if msg == msg_posts_end {
-                            middleware_send_msg_all_consumers(
-                                &exchange,
-                                &msg_posts_end,
-                                [QUEUE_INITIAL_STATE].to_vec(),
-                            );
-                        }
-
-                        if msg == msg_comments_end {
-                            if  middleware_consumer_end(
-                                &mut n_end,
-                                &exchange,
-                                [QUEUE_INITIAL_STATE].to_vec(),
-                            ) {
-                                sender_signal_clone.send(()).unwrap();
-                                break;
+                    match socket_reader.receive() {
+                        Some(msg) => {
+                            if msg == msg_posts_end {
+                                middleware_send_msg_all_consumers(
+                                    &exchange,
+                                    &msg_posts_end,
+                                    [QUEUE_INITIAL_STATE].to_vec(),
+                                );
                             }
+    
+                            if msg == msg_comments_end {
+                                if  middleware_consumer_end(
+                                    &mut n_end,
+                                    &exchange,
+                                    [QUEUE_INITIAL_STATE].to_vec(),
+                                ) {
+                                    sender_signal_clone.send("normal_end").unwrap();
+                                    break;
+                                }
+                            }
+    
+                            middleware_send_msg(&exchange, &msg, QUEUE_INITIAL_STATE);
                         }
-
-                        middleware_send_msg(&exchange, &msg, QUEUE_INITIAL_STATE);
+                        None => {
+                            break;
+                        }
                     }
                 }
                 break;
@@ -132,15 +133,17 @@ fn main() {
         }
     }
 
-    connection.close().unwrap();
-
-    if let Ok(_) = client_handler.join() {
-        logger.info("client handler closed".to_string());
+    if let Ok(_) = connection.close() {
+        logger.info("connection closed".to_string());
     }
 
     if let Ok(_) = cleaner.join() {
         logger.info("cleaner stop".to_string())
     }
 
-    logger.info("server shutdown".to_string());
+    if let Ok(_) = client_handler.join() {
+        logger.info("client handler closed".to_string());
+    }
+
+    logger.info("shutdown".to_string());
 }
