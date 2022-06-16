@@ -10,7 +10,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=1  # socket receive
-      - N_CONSUMERS=2, # 2 worker_initial_state
+      - N_CONSUMERS=${N_WORKER_INITIAL_STATE},
     entrypoint: /tp2/target/release/server
     networks:
       - tp2_net
@@ -52,14 +52,14 @@ services:
     image: worker_initial_state:latest
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: ${N_WORKER_INITIAL_STATE}
     entrypoint: /tp2/target/release/worker_initial_state
     environment:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=1   # 1 server
-      - N_CONSUMERS=6   # 6 worker_map
+      - N_CONSUMERS=${N_WORKER_MAP}
     depends_on:
       - server
     networks:
@@ -73,8 +73,8 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=2  # 2 worker_initial_state
-      - N_CONSUMERS=1, # 1 worker_filter_score
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
+      - N_CONSUMERS=${N_WORKER_FILTER_SCORE},
     depends_on:
       - server  
     networks:
@@ -85,13 +85,13 @@ services:
     entrypoint: /tp2/target/release/worker_map
     deploy:
       mode: replicated
-      replicas: 6
+      replicas: ${N_WORKER_MAP}
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - LOG_LEVEL=info
-      - N_PRODUCERS=2    # 2 worker_initial_state
-      - N_CONSUMERS=2,1  # 2 worker_filter_students, 1 worker_group_by
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
+      - N_CONSUMERS=${N_WORKER_FILTER_STUDENTS},1 # 1 worker_group_by
     depends_on:
       - server
     networks:
@@ -102,12 +102,12 @@ services:
     entrypoint: /tp2/target/release/worker_filter_students
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: ${N_WORKER_FILTER_STUDENTS}
     environment:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - LOG_LEVEL=info
-      - N_PRODUCERS=6  # 6 worker_map
+      - N_PRODUCERS=${N_WORKER_MAP}
       - N_CONSUMERS=1, # 1 worker_join
     depends_on:
       - server
@@ -115,15 +115,17 @@ services:
       - tp2_net
   
   worker_filter_score:
-    container_name: worker_filter_score
     image: worker_filter_score:latest
     entrypoint: /tp2/target/release/worker_filter_score
+    deploy:
+      mode: replicated
+      replicas: ${N_WORKER_FILTER_SCORE}
     environment:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=2,1 # 2 worker_initial_state, 1 worker_avg
-      - N_CONSUMERS=1,  # 1 worker_join
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE},1 # 1 worker_avg
+      - N_CONSUMERS=1, # 1 worker_join
     depends_on:
       - server
     networks:
@@ -137,7 +139,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=1,2 # 1 worker_filter_score, 2 worker_filter_students
+      - N_PRODUCERS=${N_WORKER_FILTER_SCORE},${N_WORKER_FILTER_STUDENTS}
     depends_on:
       - server
     networks:
@@ -151,7 +153,7 @@ services:
       - LOG_LEVEL=info
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
-      - N_PRODUCERS=2,6 # 2 worker_initial_state, 6 worker_map
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE},${N_WORKER_MAP}
     depends_on:
       - server
     networks:
