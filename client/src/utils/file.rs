@@ -81,7 +81,12 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
             logger.info("could not open file".to_string());
         }
     }
-    writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join("")));
+    if let Err(_) = writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))) {
+        logger.debug("send error".to_string());
+        return
+    }
+    if let Err(_) = writter.send(format!("{}|", OPCODE_COMMENT_END)) {
+        logger.debug("send error".to_string());
+    }
     logger.info("all sent".to_string());
-    writter.send(format!("{}|", OPCODE_COMMENT_END));
 }
