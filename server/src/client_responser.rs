@@ -68,7 +68,7 @@ pub fn client_responser(logger: &Logger, clients: Receiver<SocketWriter>) {
         }
     }
 
-    if let Ok(_) = connection.close() {
+    if connection.close().is_ok() {
         logger.info("[client_responser]: connection closed".to_string());
     }
 }

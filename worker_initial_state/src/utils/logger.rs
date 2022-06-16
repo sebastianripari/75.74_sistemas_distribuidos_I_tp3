@@ -2,7 +2,6 @@ use std::env;
 
 const LOG_LEVEL_NONE: &str = "none";
 const LOG_LEVEL_DEBUG: &str = "debug";
-const LOG_LEVEL_INFO: &str = "info";
 const LOG_LEVEL_DEFAULT: &str = LOG_LEVEL_DEBUG;
 
 #[derive(Clone)]
@@ -13,7 +12,7 @@ pub struct Logger {
 impl Logger {
     pub fn new(log_level: String) -> Logger {
         Logger {
-            log_level: log_level
+            log_level
         }
     }
 

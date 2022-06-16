@@ -2,7 +2,6 @@ use std::env;
 
 const LOG_LEVEL_NONE: &str = "none";
 const LOG_LEVEL_DEBUG: &str = "debug";
-const LOG_LEVEL_INFO: &str = "info";
 const LOG_LEVEL_DEFAULT: &str = LOG_LEVEL_DEBUG;
 pub const LOG_RATE: usize = 100000;
 
@@ -14,7 +13,7 @@ pub struct Logger {
 impl Logger {
     pub fn new(log_level: String) -> Logger {
         Logger {
-            log_level: log_level
+            log_level
         }
     }
 
@@ -42,7 +41,5 @@ pub fn logger_create() -> Logger {
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
-    let logger = Logger::new(log_level);
-
-    logger
+    Logger::new(log_level)
 }

@@ -64,7 +64,7 @@ fn main() {
         }
     }
 
-    if let Ok(_) = connection.close() {
+    if connection.close().is_ok() {
         logger.info("connection closed".to_string());
     }
 

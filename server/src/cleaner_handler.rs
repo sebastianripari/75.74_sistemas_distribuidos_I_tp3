@@ -87,7 +87,7 @@ pub fn cleaner_handler(
 
     }
 
-    if let Ok(_) = connection.close() {
+    if connection.close().is_ok() {
         logger.info("[cleaner_handler]: connection closed".to_string())
     }
 }

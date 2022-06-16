@@ -128,7 +128,7 @@ fn main() {
         middleware_send_msg(&exchange, &payload, QUEUE_TO_CLIENT);
     }
 
-    if let Ok(_) = connection.close() {
+    if connection.close().is_ok() {
         logger.info("connection closed".to_string());
     }
 
