@@ -10,8 +10,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=1  # socket receive
-      - N_CONSUMERS=${N_WORKER_INITIAL_STATE},
-
+      - N_CONSUMERS=${N_WORKER_INITIAL_STATE}
       - N_WORKER_FILTER_STUDENTS=${N_WORKER_FILTER_STUDENTS}
       - N_WORKER_INITIAL_STATE=${N_WORKER_INITIAL_STATE}
       - N_WORKER_MAP=${N_WORKER_MAP}
@@ -112,7 +111,7 @@ services:
       - RABBITMQ_PASSWORD=seba1234
       - LOG_LEVEL=info
       - N_PRODUCERS=${N_WORKER_MAP}
-      - N_CONSUMERS=1, # 1 worker_join
+      - N_CONSUMERS=1 # 1 worker_join
     depends_on:
       - server
     networks:
@@ -129,7 +128,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=${N_WORKER_INITIAL_STATE},1 # 1 worker_avg
-      - N_CONSUMERS=1, # 1 worker_join
+      - N_CONSUMERS=1 # 1 worker_join
     depends_on:
       - server
     networks:
