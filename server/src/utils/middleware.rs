@@ -207,54 +207,54 @@ fn get_env_var(var: &str) -> usize {
 }
 
 pub fn middleware_stop_all_consumers(exchange: &Exchange) {
-    let n_workers_initial_state = get_env_var("N_WORKERS_INITIAL_STATE");
-    let n_workers_filter_students = get_env_var("N_WORKERS_FILTER_STUDENTS");
-    let n_workers_map = get_env_var("N_WORKERS_MAP");
-    let n_servers = 1;
-    let n_workers_filter_score = 1;
-    let n_workers_average = 1;
-    let n_workers_group_by = 1;
-    let n_workers_join = 1;
+    let n_worker_initial_state = get_env_var("N_WORKER_INITIAL_STATE");
+    let n_worker_filter_students = get_env_var("N_WORKER_FILTER_STUDENTS");
+    let n_worker_map = get_env_var("N_WORKER_MAP");
+    let n_server = 1;
+    let n_worker_filter_score = 1;
+    let n_worker_average = 1;
+    let n_worker_group_by = 1;
+    let n_worker_join = 1;
 
     // producer * consumer = numbers of ends needed
 
-    for _ in 0..(n_workers_initial_state * n_workers_map)  {
+    for _ in 0..(n_worker_initial_state * n_worker_map)  {
         middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_MAP);
     }
 
-    for _ in 0..(n_servers * n_workers_initial_state) {
+    for _ in 0..(n_server * n_worker_initial_state) {
         middleware_send_msg_end(&exchange, QUEUE_INITIAL_STATE);
     }
 
-    for _ in 0..(n_workers_initial_state * n_workers_filter_students) {
+    for _ in 0..(n_worker_initial_state * n_worker_filter_students) {
         middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_FILTER_STUDENTS);
     }
 
-    for _ in 0..(n_workers_initial_state * n_workers_filter_score) {
+    for _ in 0..(n_worker_initial_state * n_worker_filter_score) {
         middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
     }
 
-    for _ in 0..(n_workers_average * n_workers_filter_score){
+    for _ in 0..(n_worker_average * n_worker_filter_score){
         middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE);
     }
 
-    for _ in 0..(n_workers_map * n_workers_group_by) {
+    for _ in 0..(n_worker_map * n_worker_group_by) {
         middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_GROUP_BY);
     }
 
-    for _ in 0..(n_workers_filter_students * n_workers_join) {
+    for _ in 0..(n_worker_filter_students * n_worker_join) {
         middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_JOIN);
     }
 
-    for _ in 0..(n_workers_initial_state * n_workers_average) {
+    for _ in 0..(n_worker_initial_state * n_worker_average) {
         middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
     }
 
-    for _ in 0..(n_workers_initial_state * n_workers_group_by) {
+    for _ in 0..(n_worker_initial_state * n_worker_group_by) {
         middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
     }
 
-    for _ in 0..(n_workers_filter_score * n_workers_join) {
+    for _ in 0..(n_worker_filter_score * n_worker_join) {
         middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_JOIN);
     }
 
