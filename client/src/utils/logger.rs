@@ -45,7 +45,7 @@ pub fn logger_create() -> Logger {
     if let Ok(level) = env::var("LOG_LEVEL") {
         log_level = level;
     }
-    let logger = Logger::new(log_level);
+    
 
-    logger
+    Logger::new(log_level)
 }

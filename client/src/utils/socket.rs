@@ -1,6 +1,5 @@
 use std::{
-    f32::consts,
-    io::{self, BufRead, Read, Write},
+    io::{self, BufRead, Write},
     net::TcpStream,
 };
 
@@ -27,7 +26,7 @@ impl SocketReader {
 
             v.extend(received.clone());
 
-            n_received = n_received + received.len();
+            n_received += received.len();
             self.reader.consume(received.len());
 
             if n_received == n {
@@ -43,14 +42,14 @@ impl SocketReader {
         match self.reader.read_line(&mut mensaje) {
             Err(err) => {
                 println!("{}", err);
-                return None;
+                None
             }
             Ok(bytes) => {
                 if bytes == 0 {
-                    return None;
+                    None
                 } else {
                     mensaje.pop();
-                    return Some(mensaje);
+                    Some(mensaje)
                 }
             }
         }

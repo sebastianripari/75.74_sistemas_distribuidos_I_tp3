@@ -1,4 +1,4 @@
-use std::{io::{BufReader, BufRead}, fs::OpenOptions};
+use std::{fs::OpenOptions};
 
 use crate::{entities::{comment::Comment, post::Post}, OPCODE_POST, OPCODE_POST_END, OPCODE_COMMENT, OPCODE_COMMENT_END};
 
@@ -19,11 +19,11 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
                         logger.debug(format!("about to send post: {}", post.id));
                         posts.push(post.serialize());
                         if posts.len() == BATCH_POSTS_SIZE {
-                            if let Err(_) = writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))) {
+                            if writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))).is_err() {
                                 logger.debug("send error".to_string());
                                 return
                             }
-                            n_post_sent = n_post_sent + BATCH_POSTS_SIZE;
+                            n_post_sent += BATCH_POSTS_SIZE;
                             posts.clear();
                             if n_post_sent % 100000 == 0 {
                                 logger.info(format!("n post sent: {}", n_post_sent));
@@ -39,11 +39,11 @@ pub fn send_posts_from_file(path: String, writter: &mut SocketWriter, logger: &L
             logger.debug("could not open file".to_string());
         }
     }
-    if let Err(_) = writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))) {
+    if writter.send(format!("{}|{}", OPCODE_POST, posts.join(""))).is_err() {
         logger.debug("send error".to_string());
         return
     }
-    if let Err(_) = writter.send(format!("{}|", OPCODE_POST_END)) {
+    if writter.send(format!("{}|", OPCODE_POST_END)).is_err() {
         logger.debug("send error".to_string());
     }
     logger.info("all sent".to_string());
@@ -61,11 +61,11 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
                         logger.debug(format!("about to send comment: {}", comment.id));
                         comments.push(comment.serialize());
                         if comments.len() == BATCH_COMMENTS_SIZE {
-                            if let Err(_) = writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))) {
+                            if writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))).is_err() {
                                 logger.debug("send error".to_string());
                                 break;
                             }
-                            n_comment_sent = n_comment_sent + BATCH_COMMENTS_SIZE;
+                            n_comment_sent += BATCH_COMMENTS_SIZE;
                             comments.clear();
                             if n_comment_sent % 100000 == 0 {
                                 logger.info(format!("n comment sent: {}", n_comment_sent));
@@ -81,11 +81,11 @@ pub fn send_comments_from_file(path: String, writter: &mut SocketWriter, logger:
             logger.info("could not open file".to_string());
         }
     }
-    if let Err(_) = writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))) {
+    if writter.send(format!("{}|{}", OPCODE_COMMENT, comments.join(""))).is_err() {
         logger.debug("send error".to_string());
         return
     }
-    if let Err(_) = writter.send(format!("{}|", OPCODE_COMMENT_END)) {
+    if writter.send(format!("{}|", OPCODE_COMMENT_END)).is_err() {
         logger.debug("send error".to_string());
     }
     logger.info("all sent".to_string());

@@ -34,7 +34,7 @@ impl Comment {
             created_utc: s[5].to_string(),
             permalink: s[6].to_string(),
             body: s[7].to_string(),
-            sentiment: sentiment,
+            sentiment,
             score: s[9].to_string()
         })
     }
