@@ -1,16 +1,11 @@
 use std::sync::{mpsc::Receiver, Arc, RwLock};
 
 use crate::{
-    constants::queues::{
-        AVG_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
-        QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
-        QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_JOIN, QUEUE_TO_CLIENT,
-    },
     utils::{
         logger::Logger,
         middleware::{
             middleware_connect, middleware_create_channel, middleware_create_exchange,
-            middleware_send_msg_end, middleware_stop_all_consumers,
+            middleware_stop_all_consumers,
         },
     },
 };
