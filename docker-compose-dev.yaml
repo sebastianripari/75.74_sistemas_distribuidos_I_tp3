@@ -11,6 +11,10 @@ services:
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=1  # socket receive
       - N_CONSUMERS=${N_WORKER_INITIAL_STATE},
+
+      - N_WORKER_FILTER_STUDENTS=${N_WORKER_FILTER_STUDENTS}
+      - N_WORKER_INITIAL_STATE=${N_WORKER_INITIAL_STATE}
+      - N_WORKER_MAP=${N_WORKER_MAP}
     entrypoint: /tp2/target/release/server
     networks:
       - tp2_net

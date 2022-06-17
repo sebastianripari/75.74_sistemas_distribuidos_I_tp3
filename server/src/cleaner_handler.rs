@@ -10,7 +10,7 @@ use crate::{
         logger::Logger,
         middleware::{
             middleware_connect, middleware_create_channel, middleware_create_exchange,
-            middleware_send_msg_end,
+            middleware_send_msg_end, middleware_stop_all_consumers,
         },
     },
 };
@@ -31,60 +31,8 @@ pub fn cleaner_handler(
     }
 
     if end_type == "end_sigterm" {
-        // only case SIGTERM ro SIGFAULT
-
-        for _ in 0..(2 * 6)  {
-            // producer * consumer: N_WORKER_INITIAL_STATE * N_WORKER_MAP
-            middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_MAP);
-        }
-    
-        for _ in 0..(1 * 2) {
-            // producer * consumer: server * N_WORKER_INITIAL_STATE
-            middleware_send_msg_end(&exchange, QUEUE_INITIAL_STATE);
-        }
-    
-        for _ in 0..(2 * 2) {
-            // producer * producer: N_WORKER_INITIAL_STATE * N_WORKER_FILTER_STUDENTS
-            middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_FILTER_STUDENTS);
-        }
-    
-        for _ in 0..(2 * 1) {
-            // producer * consumer: N_WORKER_INITIAL_STATE * N_WORKER_FILTER_SCORE
-            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
-        }
-    
-        for _ in 0..(1 * 1){
-            // producer * consumer: N_WORKER_AVG * N_WORKER_FILTER_SCORE
-            middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE);
-        }
-        
-        for _ in 0..(6 * 1) {
-            // producer * consumer: N_WORKER_MAP * N_WORKER_GROUP_BY
-            middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_GROUP_BY);
-        }
-       
-        for _ in 0..(2 * 1) {
-            // producer * consumer: N_WORKER_FILTER_STUDENTS * N_WORKER_JOIN
-            middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_JOIN);
-        }
-        
-        for _ in 0..(2 * 1) {
-            // producer * consumer: N_WORKER_INITIAL_STATE * N_WORKER_AVG
-            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
-        }
-    
-        for _ in 0..(2 * 1) {
-            // producer * consumer: N_WORKER_INITIAL_STATE * N_WORKER_GROUP_BY
-            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
-        }
-    
-        for _ in 0..(1 * 1) {
-            // producer: N_WORKER_FILTER_SCORE * N_WORKER_JOIN
-            middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_JOIN);
-        }
-
-        middleware_send_msg_end(&exchange, QUEUE_TO_CLIENT);
-
+        // only case SIGTERM or SIGFAULT 
+        middleware_stop_all_consumers(&exchange);
     }
 
     if connection.close().is_ok() {
