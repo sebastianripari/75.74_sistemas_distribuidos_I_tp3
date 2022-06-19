@@ -13,3 +13,8 @@ comments_full.csv
 .DS_Store
 clear_space.sh
 downloads
+
+
+# Added by cargo
+
+/target
