@@ -1,12 +1,9 @@
 use std::collections::HashMap;
-use amiquip::{Exchange};
-use crate::{
-    messages::{
-       inbound::data_comment::DataComment,
-       outbound::data_post_url::DataPostUrl
-    },
-    utils::{logger::{Logger, LOG_RATE}, middleware::middleware_send_msg}, constants::queues::QUEUE_TO_CLIENT,
-};
+
+use amiquip::Exchange;
+use reddit_meme_analyzer::commons::{utils::{logger::{Logger, LOG_RATE}, middleware::middleware_send_msg}, constants::queues::QUEUE_TO_CLIENT};
+
+use crate::messages::{data_post_url::{DataPostUrlOutbound}, data_comment::DataComment};
 
 pub fn handle_comments(
     payload: DataComment,
@@ -20,7 +17,7 @@ pub fn handle_comments(
 
     if let Some(post_url) = posts.get(&payload.post_id) {
 
-        let payload = DataPostUrl {
+        let payload = DataPostUrlOutbound {
             key: "best_students_memes_url".to_string(),
             value: post_url.to_string(),
         };

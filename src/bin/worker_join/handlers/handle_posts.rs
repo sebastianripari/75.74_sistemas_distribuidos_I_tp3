@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{messages::inbound::data_post_url::DataPostUrl, utils::logger::{Logger, LOG_RATE}};
+use reddit_meme_analyzer::commons::utils::logger::{Logger, LOG_RATE};
+
+use crate::messages::data_post_url::DataPostUrl;
 
 pub fn handle_posts(
     payload: Vec<DataPostUrl>,
