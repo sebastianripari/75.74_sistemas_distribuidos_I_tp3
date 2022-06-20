@@ -10,3 +10,6 @@ amiquip = "0.4.2"
 serde_json = "1.0"
 regex = "1"
 serde = { version = "1", features = ["derive"] }
+ctrlc = { version = "3.2.2", features = ["termination"] }
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+csv = "1.1"
