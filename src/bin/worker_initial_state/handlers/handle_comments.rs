@@ -1,13 +1,7 @@
-use amiquip::{Exchange};
+use amiquip::Exchange;
+use reddit_meme_analyzer::commons::{entities::comment::Comment, utils::{middleware::middleware_send_msg, logger::{Logger, LOG_RATE}}, constants::queues::QUEUE_COMMENTS_TO_MAP};
 
-use crate::{
-    entities::comment::Comment,
-    messages::{
-        outbound::message_comments::{CommentData},
-    },
-    utils::{logger::Logger, middleware::middleware_send_msg},
-    LOG_RATE, QUEUE_COMMENTS_TO_MAP,
-};
+use crate::messages::data_comment::CommentData;
 
 fn publish_comments(exchange: &Exchange, comments: &Vec<Comment>) {
     let payload_comments: Vec<CommentData> = comments

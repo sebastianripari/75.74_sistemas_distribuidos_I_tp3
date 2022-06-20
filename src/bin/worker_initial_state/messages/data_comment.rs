@@ -6,9 +6,3 @@ pub struct CommentData {
     pub body: String,
     pub sentiment: f32
 }
-
-#[derive(Serialize)]
-pub struct MessageComments {
-    pub opcode: u8,
-    pub payload: Option<Vec<CommentData>>
-}

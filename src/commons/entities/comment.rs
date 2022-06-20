@@ -6,9 +6,9 @@ pub struct Comment {
     subreddit_name: String,
     subreddit_nsfw: String,
     created_utc: String,
-    permalink: String,
-    body: String,
-    sentiment: f32,
+    pub permalink: String,
+    pub body: String,
+    pub sentiment: f32,
     score: String
 }
 

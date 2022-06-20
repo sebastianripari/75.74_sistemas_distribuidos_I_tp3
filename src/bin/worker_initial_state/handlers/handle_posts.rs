@@ -1,13 +1,7 @@
-use amiquip::{Exchange};
+use amiquip::Exchange;
+use reddit_meme_analyzer::commons::{utils::{middleware::middleware_send_msg, logger::{Logger, LOG_RATE}}, constants::queues::{QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY}, entities::post::Post};
 
-use crate::{
-    entities::post::Post,
-    messages::outbound::{
-        message_posts::{PostData},
-    },
-    utils::{logger::Logger, middleware::{middleware_send_msg}},
-    LOG_RATE, QUEUE_POSTS_TO_AVG, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY,
-};
+use crate::messages::data_post::PostData;
 
 fn publish_scores(exchange: &Exchange, posts: &Vec<Post>) {
     let payload_scores: Vec<i32> = posts.iter().map(|post| post.score).rev().collect();
