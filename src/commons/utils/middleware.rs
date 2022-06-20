@@ -36,12 +36,14 @@ fn get_rabbitmq_password() -> String {
 }
 
 // get the numbers of producers from ENV
-fn get_n_producers() -> usize {
-    let mut n_producers = 1;
-    if let Ok(value) = env::var("N_PRODUCERS") {
-        n_producers = value.parse::<usize>().unwrap();
+fn get_n_producers() -> Vec<usize> {
+    let mut value = "1".to_string();
+    if let Ok(v) = env::var("N_PRODUCERS") {
+        value = v;
     }
-    n_producers
+    let n_producers: Vec<&str>;
+    n_producers = value.split(',').collect();
+    n_producers.iter().flat_map(|x| x.parse::<usize>()).collect()
 }
 
 // get the numbers of consumers from ENV
@@ -173,18 +175,18 @@ pub fn middleware_send_msg_all_consumers<T: Serialize>(
 }
 
 // detect if the producer finished
-pub fn middleware_end_reached(n_end: &mut usize) -> bool {
+pub fn middleware_end_reached(n_end: &mut usize, producer_index: usize) -> bool {
     *n_end += 1;
 
     let n_producers = get_n_producers();
 
-    *n_end == n_producers
+    n_producers[producer_index] == *n_end
 }
 
 // send end to the consumer
-pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>) -> bool {
+pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>, producer_index: usize) -> bool {
     
-    if middleware_end_reached(n_end) {
+    if middleware_end_reached(n_end, producer_index) {
         let consumers = get_n_consumers();
 
         for (i, n) in consumers.iter().enumerate() {
