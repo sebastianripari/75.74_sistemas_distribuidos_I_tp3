@@ -1,6 +1,19 @@
 version: '3'
 services:
 
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=seba1234
+    depends_on:
+      - server
+    networks:
+      - tp2_net
+    ports:
+     - 15672:15672
+
   client:
     image: rust_process:latest
     entrypoint: /tp2/target/release/client

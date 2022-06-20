@@ -1,6 +1,6 @@
 use std::{fs::OpenOptions};
 
-use crate::{entities::{comment::Comment, post::Post}, OPCODE_POST, OPCODE_POST_END, OPCODE_COMMENT, OPCODE_COMMENT_END};
+use crate::commons::{entities::{post::Post, comment::Comment}, constants::opcodes::{OPCODE_POST, OPCODE_POST_END, OPCODE_COMMENT, OPCODE_COMMENT_END}};
 
 use super::{socket::SocketWriter, logger::Logger};
 

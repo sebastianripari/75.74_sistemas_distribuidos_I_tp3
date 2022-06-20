@@ -58,13 +58,19 @@ impl SocketReader {
 
 pub struct SocketWriter {
     pub writer: io::LineWriter<TcpStream>,
+    pub socket: TcpStream,
 }
 
 impl SocketWriter {
     pub fn new(stream: TcpStream) -> SocketWriter {
         SocketWriter {
-            writer: io::LineWriter::new(stream),
+            writer: io::LineWriter::new(stream.try_clone().unwrap()),
+            socket: stream,
         }
+    }
+
+    pub fn send_bytes(&mut self, msg: &[u8]) {
+        self.socket.write_all(msg).unwrap();
     }
 
     pub fn send(&mut self, mensaje: String) -> Result<(),()>{

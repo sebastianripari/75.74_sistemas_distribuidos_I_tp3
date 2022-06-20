@@ -1,8 +1,10 @@
+use crate::commons::constants::queues::{QUEUE_TO_CLIENT, QUEUE_POSTS_TO_JOIN, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_AVG, QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_GROUP_BY, AVG_TO_FILTER_SCORE, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_INITIAL_STATE, QUEUE_COMMENTS_TO_MAP};
+
 use super::logger::Logger;
 use amiquip::{
     Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, Queue, QueueDeclareOptions,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{env, thread, time::Duration};
 
 /*
@@ -50,7 +52,10 @@ fn get_n_consumers() -> Vec<usize> {
     }
     let n_consumers: Vec<&str>;
     n_consumers = value.split(',').collect();
-    n_consumers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_consumers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 // makes the connection with RabbitMQ
@@ -118,7 +123,7 @@ pub const MESSAGE_OPCODE_NORMAL: u8 = 1;
 #[derive(Serialize, Deserialize)]
 pub struct Message<T: Serialize> {
     pub opcode: u8,
-    pub payload: Option<T>
+    pub payload: Option<T>,
 }
 
 // send message end to other process, pushing to a queue
@@ -138,7 +143,6 @@ pub fn middleware_send_msg_end(exchange: &Exchange, queue_name: &str) {
 
 // send message to other process, pushing to a queue
 pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue_name: &str) {
-
     let message = Message {
         opcode: MESSAGE_OPCODE_NORMAL,
         payload: Some(payload),
@@ -150,6 +154,22 @@ pub fn middleware_send_msg<T: Serialize>(exchange: &Exchange, payload: &T, queue
             queue_name,
         ))
         .unwrap();
+}
+
+pub fn middleware_send_msg_all_consumers<T: Serialize>(
+    exchange: &Exchange,
+    payload: &T,
+    queues: Vec<&str>,
+) {
+    let consumers = get_n_consumers();
+
+    for n in consumers {
+        for queue in queues.iter() {
+            for _ in 0..n {
+                middleware_send_msg(exchange, payload, queue);
+            }
+        }
+    }
 }
 
 // detect if the producer finished
@@ -179,3 +199,64 @@ pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: V
     return false;
 }
 
+fn get_env_var(var: &str) -> usize {
+    match env::var(var) {
+        Ok(value) => value.parse::<usize>().unwrap(),
+        Err(_) => 1
+    }
+}
+
+pub fn middleware_stop_all_consumers(exchange: &Exchange) {
+    let n_worker_initial_state = get_env_var("N_WORKER_INITIAL_STATE");
+    let n_worker_filter_students = get_env_var("N_WORKER_FILTER_STUDENTS");
+    let n_worker_map = get_env_var("N_WORKER_MAP");
+    let n_server = 1;
+    let n_worker_filter_score = 1;
+    let n_worker_average = 1;
+    let n_worker_group_by = 1;
+    let n_worker_join = 1;
+
+    // producer * consumer = numbers of ends needed
+
+    for _ in 0..(n_worker_initial_state * n_worker_map)  {
+        middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_MAP);
+    }
+
+    for _ in 0..(n_server * n_worker_initial_state) {
+        middleware_send_msg_end(&exchange, QUEUE_INITIAL_STATE);
+    }
+
+    for _ in 0..(n_worker_initial_state * n_worker_filter_students) {
+        middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_FILTER_STUDENTS);
+    }
+
+    for _ in 0..(n_worker_initial_state * n_worker_filter_score) {
+        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
+    }
+
+    for _ in 0..(n_worker_average * n_worker_filter_score){
+        middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE);
+    }
+
+    for _ in 0..(n_worker_map * n_worker_group_by) {
+        middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_GROUP_BY);
+    }
+
+    for _ in 0..(n_worker_filter_students * n_worker_join) {
+        middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_JOIN);
+    }
+
+    for _ in 0..(n_worker_initial_state * n_worker_average) {
+        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_AVG);
+    }
+
+    for _ in 0..(n_worker_initial_state * n_worker_group_by) {
+        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_GROUP_BY);
+    }
+
+    for _ in 0..(n_worker_filter_score * n_worker_join) {
+        middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_JOIN);
+    }
+
+    middleware_send_msg_end(&exchange, QUEUE_TO_CLIENT);
+}
