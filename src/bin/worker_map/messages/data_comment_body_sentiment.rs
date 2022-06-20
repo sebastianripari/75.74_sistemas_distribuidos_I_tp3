@@ -6,5 +6,3 @@ pub struct DataCommentBodySentiment {
     pub body: String,
     pub sentiment: f32
 }
-
-pub type VecDataCommentBodySentiment = Vec<DataCommentBodySentiment>;

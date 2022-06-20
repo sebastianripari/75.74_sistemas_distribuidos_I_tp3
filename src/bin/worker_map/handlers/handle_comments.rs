@@ -1,20 +1,8 @@
 use amiquip::Exchange;
-
-use crate::{
-    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY},
-    messages::{
-        inbound::data_comments_body_sentiment::DataCommentBodySentiment,
-        outbound::{
-            data_comments_body::DataCommentBody,
-            data_comments_sentiment::DataCommentSentiment,
-        },
-    },
-    utils::{
-        logger::{Logger, LOG_RATE},
-        middleware::middleware_send_msg,
-    },
-};
+use reddit_meme_analyzer::commons::{utils::{middleware::middleware_send_msg, logger::{Logger, LOG_RATE}}, constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY}};
 use regex::Regex;
+
+use crate::messages::{data_comment_body_sentiment::DataCommentBodySentiment, data_comment_body::DataCommentBody, data_comment_sentiment::DataCommentSentiment};
 
 const COMMENT_PERMALINK_REGEX: &str = r"https://old.reddit.com/r/meirl/comments/([^/]+)/meirl/.*";
 
