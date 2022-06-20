@@ -10,55 +10,147 @@ services:
     depends_on:
       - server
     networks:
-      - tp2_net
+      - tp3_net
     ports:
      - 15672:15672
 
   client:
     image: rust_process:latest
     entrypoint: /tp2/target/release/client
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - FILENAME_POSTS=posts_full.csv
+      - FILENAME_COMMENTS=comments_full.csv
+    volumes:
+      - ./downloads:/tp2/downloads
+      - ./posts.csv:/tp2/posts.csv
+      - ./posts_full.csv:/tp2/posts_full.csv
+      - ./comments.csv:/tp2/comments.csv
+      - ./comments_full.csv:/tp2/comments_full.csv
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   server:
     image: rust_process:latest
     entrypoint: /tp2/target/release/server
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=1  # socket receive
+      - N_CONSUMERS=${N_WORKER_INITIAL_STATE}
+      - N_WORKER_FILTER_STUDENTS=${N_WORKER_FILTER_STUDENTS}
+      - N_WORKER_INITIAL_STATE=${N_WORKER_INITIAL_STATE}
+      - N_WORKER_MAP=${N_WORKER_MAP}
+    networks:
+      - tp3_net
+
+  worker_initial_state:
+    image: rust_process:latest
+    deploy:
+      mode: replicated
+      replicas: ${N_WORKER_INITIAL_STATE}
+    entrypoint: /tp2/target/release/worker_initial_state
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=1   # 1 server
+      - N_CONSUMERS=${N_WORKER_MAP}
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   worker_avg:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_avg
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
+      - N_CONSUMERS=1
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   worker_map:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_map
+    deploy:
+      mode: replicated
+      replicas: ${N_WORKER_MAP}
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
+      - N_CONSUMERS=${N_WORKER_FILTER_STUDENTS},1 # 1 worker_group_by
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   worker_filter_students:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_filter_students
+    deploy:
+      mode: replicated
+      replicas: ${N_WORKER_FILTER_STUDENTS}
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=${N_WORKER_MAP}
+      - N_CONSUMERS=1 # 1 worker_join
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   worker_filter_score:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_filter_score
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE},1 # 1 worker_avg
+      - N_CONSUMERS=1 # 1 worker_join
+    depends_on:
+      - server
     networks:
       - tp3_net
   
   worker_join:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_join
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=1,${N_WORKER_FILTER_STUDENTS}
+    depends_on:
+      - server
     networks:
       - tp3_net
 
   worker_group_by:
     image: rust_process:latest
     entrypoint: /tp2/target/release/worker_group_by
+    environment:
+      - LOG_LEVEL=info
+      - RABBITMQ_USER=root
+      - RABBITMQ_PASSWORD=seba1234
+      - N_PRODUCERS=${N_WORKER_INITIAL_STATE},${N_WORKER_MAP}
+    depends_on:
+      - server
     networks:
       - tp3_net
 
