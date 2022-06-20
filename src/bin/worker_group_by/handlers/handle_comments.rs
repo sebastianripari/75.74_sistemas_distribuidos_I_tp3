@@ -1,5 +1,8 @@
 use std::collections::HashMap;
-use crate::{messages::inbound::data_comment_sentiment::DataCommentSentiment, utils::logger::{Logger, LOG_RATE}};
+
+use reddit_meme_analyzer::commons::utils::logger::Logger;
+
+use crate::messages::data_comment_sentiment::DataCommentSentiment;
 
 pub fn handle_comments(
     payload: Vec<DataCommentSentiment>,
@@ -31,5 +34,4 @@ pub fn handle_comments(
     if *n % 10000 < 10 {
         logger.info(format!("n comments processed: {}", n))
     }
-    
 }
