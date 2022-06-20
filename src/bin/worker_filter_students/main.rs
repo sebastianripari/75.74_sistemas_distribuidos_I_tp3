@@ -1,22 +1,20 @@
 use amiquip::ConsumerMessage;
-use constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_JOIN};
 use handlers::handle_comments::handle_comments;
-use messages::{
-    inbound::data_comment_body::DataCommentBody,
-    opcodes::{MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL},
-};
-use utils::{
-    logger::logger_create,
-    middleware::{
-        middleware_connect, middleware_consumer_end, middleware_create_channel,
-        middleware_create_consumer, middleware_create_exchange, middleware_declare_queue, Message,
+use messages::message_comment_body::DataCommentBody;
+use reddit_meme_analyzer::commons::{
+    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_JOIN},
+    utils::{
+        logger::logger_create,
+        middleware::{
+            middleware_connect, middleware_consumer_end, middleware_create_channel,
+            middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
+            Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+        },
     },
 };
 
-mod constants;
 mod handlers;
 mod messages;
-mod utils;
 
 fn main() {
     let logger = logger_create();
@@ -45,6 +43,7 @@ fn main() {
                             &mut n_end,
                             &exchange,
                             [QUEUE_COMMENTS_TO_JOIN].to_vec(),
+                            0,
                         );
                     }
                     MESSAGE_OPCODE_NORMAL => {

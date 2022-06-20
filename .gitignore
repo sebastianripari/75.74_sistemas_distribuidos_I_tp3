@@ -1,4 +1,3 @@
-bin/
 server/target
 client/target
 worker_initial_state/target
