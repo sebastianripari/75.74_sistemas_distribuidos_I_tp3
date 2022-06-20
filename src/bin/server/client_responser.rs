@@ -1,7 +1,7 @@
 use std::sync::mpsc::Receiver;
 
 use amiquip::ConsumerMessage;
-use reddit_meme_analyzer::commons::{utils::{socket::SocketWriter, logger::Logger, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, Message}}, constants::queues::QUEUE_TO_CLIENT};
+use reddit_meme_analyzer::commons::{utils::{socket::SocketWriter, logger::Logger, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}}, constants::queues::QUEUE_TO_CLIENT};
 
 use crate::{handlers::handle::{self, handle}, messages::message::Data};
 

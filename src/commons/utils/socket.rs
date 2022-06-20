@@ -41,7 +41,6 @@ impl SocketReader {
         let mut mensaje = String::new();
         match self.reader.read_line(&mut mensaje) {
             Err(err) => {
-                println!("{}", err);
                 None
             }
             Ok(bytes) => {

@@ -90,7 +90,7 @@ fn main() {
 
     match TcpStream::connect(&address) {
         Ok(stream) => {
-            println!("connected with the server");
+            logger.info("connected with the server".to_string());
             let stream_clone = stream.try_clone().unwrap();
             socket_reader = SocketReader::new(stream);
             socket_writer = SocketWriter::new(stream_clone);

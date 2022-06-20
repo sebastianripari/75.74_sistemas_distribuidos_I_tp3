@@ -1,9 +1,25 @@
 use std::collections::HashMap;
 
 use amiquip::ConsumerMessage;
-use reddit_meme_analyzer::commons::{utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message, middleware_consumer_end, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}}, constants::queues::{QUEUE_POSTS_TO_JOIN, QUEUE_COMMENTS_TO_JOIN}};
+use reddit_meme_analyzer::commons::{
+    constants::queues::{QUEUE_COMMENTS_TO_JOIN, QUEUE_POSTS_TO_JOIN},
+    utils::{
+        logger::logger_create,
+        middleware::{
+            middleware_connect, middleware_consumer_end, middleware_create_channel,
+            middleware_create_consumer, middleware_create_exchange, middleware_declare_queue,
+            Message, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL,
+        },
+    },
+};
 
-use crate::{messages::{data_post_url::DataPostUrl, data_comment::DataComment}, handlers::{handle_posts::{handle_posts}, handle_comments::{self, handle_comments}}};
+use crate::{
+    handlers::{
+        handle_comments::{self, handle_comments},
+        handle_posts::handle_posts,
+    },
+    messages::{data_comment::DataComment, data_post_url::DataPostUrl},
+};
 
 mod handlers;
 mod messages;
@@ -50,7 +66,7 @@ fn main() {
             }
             _ => {
                 break;
-            },
+            }
         }
     }
 
@@ -69,6 +85,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
+                        logger.info("received end".to_string());
                         end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 1);
                     }
                     MESSAGE_OPCODE_NORMAL => {
@@ -78,7 +95,7 @@ fn main() {
                             &mut n_joins,
                             &mut posts,
                             &logger,
-                            &exchange
+                            &exchange,
                         );
                     }
                     _ => {}
@@ -92,7 +109,7 @@ fn main() {
             }
             _ => {
                 break;
-            },
+            }
         }
     }
 
@@ -100,5 +117,5 @@ fn main() {
         logger.info("connection closed".to_string());
     }
 
-    println!("worker join shutdown");
+    logger.info("shutdown".to_string());
 }

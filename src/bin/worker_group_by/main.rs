@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use amiquip::ConsumerMessage;
 use handlers::{handle_posts::{self, handle_posts}, handle_comments::{self, handle_comments}};
 use messages::{data_post_url::DataPostUrl, data_comment_sentiment::DataCommentSentiment, data_best_url::DataBestUrl};
-use reddit_meme_analyzer::commons::{utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message, middleware_consumer_end, middleware_send_msg}}, constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_TO_CLIENT}};
+use reddit_meme_analyzer::commons::{utils::{logger::logger_create, middleware::{middleware_connect, middleware_create_channel, middleware_declare_queue, middleware_create_consumer, middleware_create_exchange, Message, middleware_consumer_end, middleware_send_msg, MESSAGE_OPCODE_END, MESSAGE_OPCODE_NORMAL}}, constants::queues::{QUEUE_POSTS_TO_GROUP_BY, QUEUE_COMMENTS_TO_GROUP_BY, QUEUE_TO_CLIENT}};
 
 mod handlers;
 mod messages;

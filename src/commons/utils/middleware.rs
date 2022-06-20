@@ -1,4 +1,8 @@
-use crate::commons::constants::queues::{QUEUE_TO_CLIENT, QUEUE_POSTS_TO_JOIN, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_AVG, QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_GROUP_BY, AVG_TO_FILTER_SCORE, QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_INITIAL_STATE, QUEUE_COMMENTS_TO_MAP};
+use crate::commons::constants::queues::{
+    AVG_TO_FILTER_SCORE, QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_GROUP_BY,
+    QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_MAP, QUEUE_INITIAL_STATE, QUEUE_POSTS_TO_AVG,
+    QUEUE_POSTS_TO_FILTER_SCORE, QUEUE_POSTS_TO_GROUP_BY, QUEUE_POSTS_TO_JOIN, QUEUE_TO_CLIENT,
+};
 
 use super::logger::Logger;
 use amiquip::{
@@ -43,7 +47,10 @@ fn get_n_producers() -> Vec<usize> {
     }
     let n_producers: Vec<&str>;
     n_producers = value.split(',').collect();
-    n_producers.iter().flat_map(|x| x.parse::<usize>()).collect()
+    n_producers
+        .iter()
+        .flat_map(|x| x.parse::<usize>())
+        .collect()
 }
 
 // get the numbers of consumers from ENV
@@ -193,14 +200,18 @@ pub fn middleware_end_reached(n_end: &mut usize, producer_index: usize) -> bool 
 }
 
 // send end to the consumer
-pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: Vec<&str>, producer_index: usize) -> bool {
-    
+pub fn middleware_consumer_end(
+    n_end: &mut usize,
+    exchange: &Exchange,
+    queues: Vec<&str>,
+    producer_index: usize,
+) -> bool {
     if middleware_end_reached(n_end, producer_index) {
         let consumers = get_n_consumers();
 
-        for (i, n) in consumers.iter().enumerate() {
-            for _ in 0..*n {
-                middleware_send_msg_end(exchange, queues[i]);
+        for (i, queue) in queues.iter().enumerate() {
+            for _ in 0..consumers[i] {
+                middleware_send_msg_end(exchange, queue);
             }
         }
 
@@ -213,7 +224,7 @@ pub fn middleware_consumer_end(n_end: &mut usize, exchange: &Exchange, queues: V
 fn get_env_var(var: &str) -> usize {
     match env::var(var) {
         Ok(value) => value.parse::<usize>().unwrap(),
-        Err(_) => 1
+        Err(_) => 1,
     }
 }
 
@@ -229,7 +240,7 @@ pub fn middleware_stop_all_consumers(exchange: &Exchange) {
 
     // producer * consumer = numbers of ends needed
 
-    for _ in 0..(n_worker_initial_state * n_worker_map)  {
+    for _ in 0..(n_worker_initial_state * n_worker_map) {
         middleware_send_msg_end(&exchange, QUEUE_COMMENTS_TO_MAP);
     }
 
@@ -245,7 +256,7 @@ pub fn middleware_stop_all_consumers(exchange: &Exchange) {
         middleware_send_msg_end(&exchange, QUEUE_POSTS_TO_FILTER_SCORE);
     }
 
-    for _ in 0..(n_worker_average * n_worker_filter_score){
+    for _ in 0..(n_worker_average * n_worker_filter_score) {
         middleware_send_msg_end(&exchange, AVG_TO_FILTER_SCORE);
     }
 

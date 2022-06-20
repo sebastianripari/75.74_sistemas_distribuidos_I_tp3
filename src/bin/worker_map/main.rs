@@ -43,6 +43,7 @@ fn main() {
                 let payload = msg.payload;
 
                 if opcode == MESSAGE_OPCODE_END {
+                    
                     end = middleware_consumer_end(
                         &mut n_end,
                         &exchange,

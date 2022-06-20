@@ -39,6 +39,7 @@ fn main() {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
+                        logger.info("received end".to_string());
                         end = middleware_consumer_end(
                             &mut n_end,
                             &exchange,
