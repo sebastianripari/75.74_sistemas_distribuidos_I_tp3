@@ -36,78 +36,68 @@ fn main() {
     let consumer_comments = middleware_create_consumer(&queue_comments);
     let exchange = middleware_create_exchange(&channel);
 
-    let mut n_post_processed = 0;
     let mut posts = HashMap::new();
+
+    let mut n_processed = 0;
     let mut end = false;
     let mut n_end = 0;
+
     for message in consumer_posts.receiver().iter() {
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let msg: Message<Vec<DataPostUrl>> = serde_json::from_str(&body).unwrap();
-                let opcode = msg.opcode;
-                let payload = msg.payload;
+        if let ConsumerMessage::Delivery(delivery) = message {
+            let body = String::from_utf8_lossy(&delivery.body);
+            let msg: Message<Vec<DataPostUrl>> = serde_json::from_str(&body).unwrap();
+            let opcode = msg.opcode;
+            let payload = msg.payload;
 
-                match opcode {
-                    MESSAGE_OPCODE_END => {
-                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 0);
-                    }
-                    MESSAGE_OPCODE_NORMAL => {
-                        handle_posts(payload.unwrap(), &mut n_post_processed, &mut posts, &logger)
-                    }
-                    _ => {}
+            match opcode {
+                MESSAGE_OPCODE_END => {
+                    end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 0);
                 }
-
-                consumer_posts.ack(delivery).unwrap();
-
-                if end {
-                    break;
+                MESSAGE_OPCODE_NORMAL => {
+                    handle_posts(payload.unwrap(), &mut n_processed, &mut posts, &logger)
                 }
+                _ => {}
             }
-            _ => {
+
+            consumer_posts.ack(delivery).unwrap();
+
+            if end {
                 break;
             }
         }
     }
 
-    let mut n_comments_processed = 0;
-    let mut n_joins = 0;
-
     end = false;
     n_end = 0;
+    n_processed = 0;
+
     for message in consumer_comments.receiver().iter() {
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let msg: Message<DataComment> = serde_json::from_str(&body).unwrap();
-                let opcode = msg.opcode;
-                let payload = msg.payload;
+        if let ConsumerMessage::Delivery(delivery) = message {
+            let body = String::from_utf8_lossy(&delivery.body);
+            let msg: Message<DataComment> = serde_json::from_str(&body).unwrap();
+            let opcode = msg.opcode;
+            let payload = msg.payload;
 
-                match opcode {
-                    MESSAGE_OPCODE_END => {
-                        logger.info("received end".to_string());
-                        end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 1);
-                    }
-                    MESSAGE_OPCODE_NORMAL => {
-                        handle_comments(
-                            payload.unwrap(),
-                            &mut n_comments_processed,
-                            &mut n_joins,
-                            &mut posts,
-                            &logger,
-                            &exchange,
-                        );
-                    }
-                    _ => {}
+            match opcode {
+                MESSAGE_OPCODE_END => {
+                    logger.info("received end".to_string());
+                    end = middleware_consumer_end(&mut n_end, &exchange, [].to_vec(), 1);
                 }
-
-                consumer_comments.ack(delivery).unwrap();
-
-                if end {
-                    break;
+                MESSAGE_OPCODE_NORMAL => {
+                    handle_comments(
+                        payload.unwrap(),
+                        &mut n_processed,
+                        &mut posts,
+                        &logger,
+                        &exchange,
+                    );
                 }
+                _ => {}
             }
-            _ => {
+
+            consumer_comments.ack(delivery).unwrap();
+
+            if end {
                 break;
             }
         }

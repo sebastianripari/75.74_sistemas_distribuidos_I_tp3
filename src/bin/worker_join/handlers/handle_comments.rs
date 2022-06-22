@@ -8,7 +8,6 @@ use crate::messages::{data_post_url::{DataPostUrlOutbound}, data_comment::DataCo
 pub fn handle_comments(
     payload: DataComment,
     n: &mut usize,
-    n_joins: &mut usize,
     posts: &mut HashMap<String, String>,
     logger: &Logger,
     exchange: &Exchange
@@ -23,11 +22,6 @@ pub fn handle_comments(
         };
 
         middleware_send_msg(exchange, &payload, QUEUE_TO_CLIENT);
-
-        *n_joins += 1;
-        if *n_joins % 100 == 0 {
-            logger.info(format!("n joins: {}", n_joins));
-        }
     }
 
     posts.remove(&payload.post_id);
