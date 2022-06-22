@@ -146,11 +146,11 @@ pub trait MiddlewareService<T> {
 
                 match opcode {
                     MESSAGE_OPCODE_END => {
+                        n_end += 1;
+
                         if n_end == n {
                             end = true;
                             self.process_end(exchange);
-                        } else {
-                            n_end += 1;
                         }
                     }
                     MESSAGE_OPCODE_NORMAL => {
