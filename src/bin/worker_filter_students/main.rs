@@ -1,20 +1,37 @@
-use amiquip::ConsumerMessage;
+use amiquip::Exchange;
 use handlers::handle_comments::handle_comments;
 use messages::message_comment_body::DataCommentBody;
 use reddit_meme_analyzer::commons::{
-    constants::queues::{QUEUE_COMMENTS_TO_FILTER_STUDENTS, QUEUE_COMMENTS_TO_JOIN},
+    constants::queues::{QUEUE_COMMENTS_TO_JOIN, QUEUE_COMMENTS_TO_FILTER_STUDENTS},
     utils::{
-        logger::logger_create,
+        logger::{logger_create, Logger},
         middleware::{
-            middleware_consumer_end,
-            Message, MiddlewareConnection, MESSAGE_OPCODE_END,
-            MESSAGE_OPCODE_NORMAL,
+            MiddlewareConnection,
+            middleware_send_msg_end, MiddlewareService,
         },
     },
 };
 
 mod handlers;
 mod messages;
+
+struct WorkerFilterStudents;
+
+impl MiddlewareService<Vec<DataCommentBody>> for WorkerFilterStudents {
+    fn process_message(
+        &self,
+        payload: &mut Vec<DataCommentBody>,
+        n_processed: &mut usize,
+        exchange: &Exchange,
+        logger: &Logger
+    ) {
+        handle_comments(payload, n_processed, &logger, &exchange);
+    }
+
+    fn process_end(&self, exchange: &Exchange) {
+        middleware_send_msg_end(exchange, QUEUE_COMMENTS_TO_JOIN);
+    }
+}
 
 fn main() {
     let logger = logger_create();
@@ -25,39 +42,9 @@ fn main() {
         let consumer = middleware.get_consumer(QUEUE_COMMENTS_TO_FILTER_STUDENTS);
         let exchange = middleware.get_direct_exchange();
 
-        let mut n_processed = 0;
-        let mut n_end = 0;
-        let mut end = false;
-        for message in consumer.receiver().iter() {
-            if let ConsumerMessage::Delivery(delivery) = message {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let msg: Message<Vec<DataCommentBody>> = serde_json::from_str(&body).unwrap();
-                let opcode = msg.opcode;
-                let payload = msg.payload;
+        let worker = WorkerFilterStudents;
 
-                match opcode {
-                    MESSAGE_OPCODE_END => {
-                        logger.info("received end".to_string());
-                        end = middleware_consumer_end(
-                            &mut n_end,
-                            &exchange,
-                            [QUEUE_COMMENTS_TO_JOIN].to_vec(),
-                            0,
-                        );
-                    }
-                    MESSAGE_OPCODE_NORMAL => {
-                        handle_comments(payload.unwrap(), &mut n_processed, &logger, &exchange);
-                    }
-                    _ => {}
-                }
-
-                consumer.ack(delivery).unwrap();
-
-                if end {
-                    break;
-                }
-            }
-        }
+        worker.consume(&consumer, &exchange, &logger);
     }
 
     middleware.close();
