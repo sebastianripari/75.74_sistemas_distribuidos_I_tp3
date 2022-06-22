@@ -1,5 +1,5 @@
 use amiquip::ConsumerMessage;
-use handlers::handle_comments::{handle_comments};
+use handlers::handle_comments::handle_comments;
 use messages::data_comment_body_sentiment::DataCommentBodySentiment;
 use reddit_meme_analyzer::commons::{
     constants::queues::{
@@ -34,16 +34,14 @@ fn main() {
     for message in consumer.receiver().iter() {
         let mut end = false;
 
-        match message {
-            ConsumerMessage::Delivery(delivery) => {
-                let body = String::from_utf8_lossy(&delivery.body);
-                let msg: Message<Vec<DataCommentBodySentiment>> =
-                    serde_json::from_str(&body).unwrap();
-                let opcode = msg.opcode;
-                let payload = msg.payload;
+        if let ConsumerMessage::Delivery(delivery) = message {
+            let body = String::from_utf8_lossy(&delivery.body);
+            let msg: Message<Vec<DataCommentBodySentiment>> = serde_json::from_str(&body).unwrap();
+            let opcode = msg.opcode;
+            let payload = msg.payload;
 
-                if opcode == MESSAGE_OPCODE_END {
-                    
+            match opcode {
+                MESSAGE_OPCODE_END => {
                     end = middleware_consumer_end(
                         &mut n_end,
                         &exchange,
@@ -55,18 +53,15 @@ fn main() {
                         0,
                     );
                 }
-
-                if opcode == MESSAGE_OPCODE_NORMAL {
+                MESSAGE_OPCODE_NORMAL => {
                     handle_comments(&mut payload.unwrap(), &mut n_processed, &exchange, &logger);
                 }
-
-                consumer.ack(delivery).unwrap();
-
-                if end {
-                    break;
-                }
+                _ => {}
             }
-            _ => {
+
+            consumer.ack(delivery).unwrap();
+
+            if end {
                 break;
             }
         }
