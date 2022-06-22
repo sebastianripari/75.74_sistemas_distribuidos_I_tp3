@@ -91,7 +91,7 @@ services:
       - RABBITMQ_USER=root
       - RABBITMQ_PASSWORD=seba1234
       - N_PRODUCERS=${N_WORKER_INITIAL_STATE}
-      - N_CONSUMERS=${N_WORKER_FILTER_STUDENTS},1 # 1 worker_group_by
+      - N_CONSUMERS=${N_WORKER_FILTER_STUDENTS}
     depends_on:
       - server
     networks:

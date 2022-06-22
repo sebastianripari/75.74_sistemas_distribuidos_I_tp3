@@ -6,9 +6,10 @@ use crate::commons::constants::queues::{
 
 use super::logger::Logger;
 use amiquip::{
-    Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
+    Channel, Connection, Consumer, ConsumerMessage, ConsumerOptions, Exchange, Publish,
+    QueueDeclareOptions,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{env, thread, time::Duration};
 
 /*
@@ -54,7 +55,7 @@ fn get_n_producers() -> Vec<usize> {
 }
 
 // get the numbers of consumers from ENV
-fn get_n_consumers() -> Vec<usize> {
+pub fn get_n_consumers() -> Vec<usize> {
     let mut value = "1".to_string();
     if let Ok(v) = env::var("N_CONSUMERS") {
         value = v;
@@ -70,7 +71,7 @@ fn get_n_consumers() -> Vec<usize> {
 pub struct MiddlewareConnection {
     connection: Connection,
     channel: Channel,
-    logger: Logger
+    logger: Logger,
 }
 
 impl MiddlewareConnection {
@@ -81,12 +82,13 @@ impl MiddlewareConnection {
         MiddlewareConnection {
             connection,
             channel,
-            logger: logger.clone()
+            logger: logger.clone(),
         }
     }
 
     pub fn get_consumer(&self, queue: &str) -> Consumer {
-        let queue = self.channel
+        let queue = self
+            .channel
             .queue_declare(queue, QueueDeclareOptions::default())
             .unwrap();
 
@@ -109,6 +111,65 @@ impl MiddlewareConnection {
     pub fn close(self) {
         if let Ok(_) = self.connection.close() {
             self.logger.info("connection closed".to_string())
+        }
+    }
+}
+
+pub trait MiddlewareService<T> {
+    fn process_message(
+        &self,
+        payload: &mut T,
+        n_processed: &mut usize,
+        exchange: &Exchange,
+        logger: &Logger,
+    );
+
+    fn process_end(&self, exchange: &Exchange);
+
+    fn consume(&self, consumer: &Consumer, exchange: &Exchange, logger: &Logger)
+    where
+        T: Serialize,
+        T: DeserializeOwned,
+    {
+        let mut end = false;
+        let mut n_end = 0;
+        let mut n_processed = 0;
+
+        let n = get_n_producers()[0];
+
+        for message in consumer.receiver().iter() {
+            if let ConsumerMessage::Delivery(delivery) = message {
+                let body = String::from_utf8_lossy(&delivery.body);
+                let msg: Message<T> = serde_json::from_str(&body).unwrap();
+                let opcode = msg.opcode;
+                let payload = msg.payload;
+
+                match opcode {
+                    MESSAGE_OPCODE_END => {
+                        if n_end == n {
+                            end = true;
+                            self.process_end(exchange);
+                        } else {
+                            n_end += 1;
+                        }
+                    }
+                    MESSAGE_OPCODE_NORMAL => {
+                        self.process_message(
+                            &mut payload.unwrap(),
+                            &mut n_processed,
+                            exchange,
+                            logger,
+                        );
+                    }
+                    _ => {}
+                }
+
+                consumer.ack(delivery).unwrap();
+
+                if end {
+                    break;
+                }
+            }
         }
     }
 }
