@@ -6,7 +6,7 @@ use crate::commons::constants::queues::{
 
 use super::logger::Logger;
 use amiquip::{
-    Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, Queue, QueueDeclareOptions,
+    Channel, Connection, Consumer, ConsumerOptions, Exchange, Publish, QueueDeclareOptions,
 };
 use serde::{Deserialize, Serialize};
 use std::{env, thread, time::Duration};
@@ -67,6 +67,52 @@ fn get_n_consumers() -> Vec<usize> {
         .collect()
 }
 
+pub struct MiddlewareConnection {
+    connection: Connection,
+    channel: Channel,
+    logger: Logger
+}
+
+impl MiddlewareConnection {
+    pub fn new(logger: &Logger) -> MiddlewareConnection {
+        let mut connection = middleware_connect(logger);
+        let channel = middleware_create_channel(&mut connection);
+
+        MiddlewareConnection {
+            connection,
+            channel,
+            logger: logger.clone()
+        }
+    }
+
+    pub fn get_consumer(&self, queue: &str) -> Consumer {
+        let queue = self.channel
+            .queue_declare(queue, QueueDeclareOptions::default())
+            .unwrap();
+
+        queue.consume(ConsumerOptions::default()).unwrap()
+    }
+
+    pub fn get_direct_exchange(&self) -> Exchange {
+        Exchange::direct(&self.channel)
+    }
+
+    // makes a queues declaration
+    pub fn declare_queues(&self, queues: Vec<&str>) {
+        for queue in queues {
+            self.channel
+                .queue_declare(queue, QueueDeclareOptions::default())
+                .unwrap();
+        }
+    }
+
+    pub fn close(self) {
+        if let Ok(_) = self.connection.close() {
+            self.logger.info("connection closed".to_string())
+        }
+    }
+}
+
 // makes the connection with RabbitMQ
 // iterations: try and wait each one seconds, because RabbitMQ takes a bit to wake up
 pub fn middleware_connect(logger: &Logger) -> Connection {
@@ -107,27 +153,6 @@ fn middleware_connect_(logger: &Logger) -> Result<Connection, ()> {
 // makes a channel to send and receive messages
 pub fn middleware_create_channel(connection: &mut Connection) -> Channel {
     connection.open_channel(None).unwrap()
-}
-
-// makes a queue declaration
-pub fn middleware_declare_queue<'a>(channel: &'a Channel, queue_name: &'a str) -> Queue<'a> {
-    channel
-        .queue_declare(queue_name, QueueDeclareOptions::default())
-        .unwrap()
-}
-
-// makes a queues declaration
-pub fn middleware_declare_queues(channel: &Channel, queues: Vec<&str>) {
-    for queue in queues {
-        channel
-            .queue_declare(queue, QueueDeclareOptions::default())
-            .unwrap();
-    }
-}
-
-// makes queue consumer
-pub fn middleware_create_consumer<'a>(queue: &'a Queue) -> Consumer<'a> {
-    queue.consume(ConsumerOptions::default()).unwrap()
 }
 
 // makes exchange
